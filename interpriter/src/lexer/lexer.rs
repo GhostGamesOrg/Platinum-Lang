@@ -306,7 +306,7 @@ impl Scanner {
     fn char(&mut self) -> Result<(), String> {
         let pos_start = self.get_pos() - 1;
         let mut result: char = ' '; 
-        while self.peek() != '"' && !self.is_at_end() {
+        while self.peek() != '\'' && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
                 let lexeme = self.get_lexeme((self.line, pos_start, self.current));

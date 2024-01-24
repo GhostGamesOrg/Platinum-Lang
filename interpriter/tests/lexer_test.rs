@@ -1,4 +1,13 @@
+use std::{self, fs};
+use std::io::Read;
+
 use interpriter::lexer::{lexer::*, token::{TokenType, LiteralValue}};
+
+
+fn read_file(path: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let src = fs::read_to_string(path)?.parse()?;
+    Ok(src)
+}
 
 #[test]
 fn handle_one_char_tokens() {
@@ -139,6 +148,62 @@ fn string_unexpected_char_error() {
         },
         Ok(_) => ()
     }
+}
+
+#[test]
+fn handle_char_tokens() {
+    let src = "'A'";
+    let mut scanner = Scanner::new(src);
+    let _ = scanner.scan_tokens();
+
+    assert_eq!(scanner.tokens.len(), 2);
+    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::CharValue('A')));
+    assert_eq!(scanner.tokens[0].lexeme, "'A'".to_string());
+    assert_eq!(scanner.tokens[0].token_type, TokenType::Char);
+    assert_eq!(scanner.tokens[1].token_type, TokenType::EOF);
+}
+
+#[test]
+fn handle_special_chars_tokens() {
+    let src: String = match read_file("tests\\codes\\handle_special_chars_tokens.ppl") {
+        Err(_) => {
+            assert!(false);
+            "Error".to_string()
+        },
+        Ok(src) => src
+    };
+
+    let mut scanner = Scanner::new(src.as_str());
+    match scanner.scan_tokens() {
+        Err(msg) => {
+            println!("{}", msg);
+        },
+        Ok(_) => ()
+    }
+
+    for token in scanner.tokens.iter() {
+        println!("{:?}", token);
+    }
+
+    assert_eq!(scanner.tokens.len(), 7);
+    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::CharValue('A')));
+    assert_eq!(scanner.tokens[2].literal, Some(LiteralValue::CharValue('\t')));
+    assert_eq!(scanner.tokens[4].literal, Some(LiteralValue::CharValue('\n')));
+
+    assert_eq!(scanner.tokens[0].lexeme, "'A'".to_string());
+    assert_eq!(scanner.tokens[1].lexeme, "// Тут будет просто 'A'".to_string());
+    assert_eq!(scanner.tokens[2].lexeme, "'\t'".to_string());
+    assert_eq!(scanner.tokens[3].lexeme, "// Тут уже будет '\t'".to_string());
+    assert_eq!(scanner.tokens[4].lexeme, "'\n'".to_string());
+    assert_eq!(scanner.tokens[5].lexeme, "// Тут уже будет '\n'".to_string());
+
+    assert_eq!(scanner.tokens[0].token_type, TokenType::Char);
+    assert_eq!(scanner.tokens[1].token_type, TokenType::Coment);
+    assert_eq!(scanner.tokens[2].token_type, TokenType::Char);
+    assert_eq!(scanner.tokens[3].token_type, TokenType::Coment);
+    assert_eq!(scanner.tokens[4].token_type, TokenType::Char);
+    assert_eq!(scanner.tokens[5].token_type, TokenType::Coment);
+    assert_eq!(scanner.tokens[6].token_type, TokenType::EOF);
 }
 
 
