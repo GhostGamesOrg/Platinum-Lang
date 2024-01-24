@@ -4,7 +4,10 @@ macro_rules! add_single_tokens {
     ($self:expr, $_char:expr, $( $c:expr => $token:ident ),*) => {
         match $_char {
             $(
-                $c => $self.add_token(TokenType::$token, ($self.line, $self.get_pos() - 1, $self.get_pos())),
+                $c => {
+                    $self.add_token(TokenType::$token, ($self.line, $self.get_pos() - 1, $self.get_pos()));
+                    return Ok(());
+                }
 
             )*
             _ => {
@@ -37,7 +40,11 @@ impl Scanner {
         while !self.is_at_end() {
             match self.scan_token() {
                 Ok(_) => (),
-                Err(msg) => errors.push(msg),
+                Err(msg) => {
+                    println!("ERROR!");
+                    errors.push(msg);
+                    break;
+                },
             }
         }
 
@@ -227,7 +234,16 @@ impl Scanner {
                     Err(msg) => return Err(msg)
                 }
             }
-            _ => return Err(format!("Unrecognized char at possition [{} | {}:{}]: {}", self.line, pos_start, self.current, c)),
+            '\'' => {
+                match self.char() {
+                    Ok(_) => (),
+                    Err(msg) => return Err(msg)
+                }
+            }
+            _ => {
+                println!("{}", c as u8);
+                return Err(format!("Unrecognized char at possition [{} | {}:{}]: {}", self.line, pos_start, self.current, c))
+            },
         }
         Ok(())
     }
@@ -266,7 +282,9 @@ impl Scanner {
                         // buffer.push('\u');
                         todo!("Unicode");
                     } else {
-                        return Err("Unexpected charrecter".to_string());
+                        self.advance();
+                        let lexeme = self.get_lexeme((self.line, pos_start, self.current));
+                        return Err(format!("Unexpected charrecter at possition [{} | {}:{}]: {}", self.line, pos_start, self.current, lexeme));
                     }
                 },
                 _ => buffer.push(c)
@@ -281,6 +299,61 @@ impl Scanner {
         self.advance();
 
         self.add_token_lit(TokenType::String, Some(LiteralValue::StringValue(buffer)), (self.line, pos_start, self.get_pos()));
+
+        Ok(())
+    }
+
+    fn char(&mut self) -> Result<(), String> {
+        let pos_start = self.get_pos() - 1;
+        let mut result: char = ' '; 
+        while self.peek() != '"' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+                let lexeme = self.get_lexeme((self.line, pos_start, self.current));
+                return Err(format!("Unexpected charrecter at possition [{} | {}:{}]: {}", self.line, pos_start, self.current, lexeme));
+            }
+            let c = self.advance();
+
+            match c {
+                '\\' => {
+                    if self.char_match('\\') {
+                        result = '\\';
+                    } else if self.char_match('n') {
+                        result = '\n';
+                    } else if self.char_match('r') {
+                        result = '\r';
+                    } else if self.char_match('t') {
+                        result = '\t';
+                    } else if self.char_match('0') {
+                        result = '\0';
+                    } else if self.char_match('"') {
+                        result = '\"';
+                    } else if self.char_match('u') {
+                        // let mut u_buffer = String::new();
+                        // let u_c = self.advance();
+                        // while u_c.is_digit(16) {
+                        //     
+                        // }
+                        // buffer.push('\u');
+                        todo!("Unicode");
+                    } else {
+                        self.advance();
+                        let lexeme = self.get_lexeme((self.line, pos_start, self.current));
+                        return Err(format!("Unexpected charrecter at possition [{} | {}:{}]: {}", self.line, pos_start, self.current, lexeme));
+                    }
+                },
+                _ => result = c
+            }
+        }
+        
+        if self.is_at_end() {
+            let lexeme = self.get_lexeme((self.line, pos_start, self.current));
+            return Err(format!("Unterminated char at possition [{} | {}:{}]: {}", self.line, pos_start, self.current, lexeme));
+        }
+        
+        self.advance();
+
+        self.add_token_lit(TokenType::Char, Some(LiteralValue::CharValue(result)), (self.line, pos_start, self.get_pos()));
 
         Ok(())
     }

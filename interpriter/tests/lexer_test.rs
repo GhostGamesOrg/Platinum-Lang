@@ -118,12 +118,49 @@ fn handle_string_tokens() {
 
 
 #[test]
-fn handle_errors() {
+fn string_unterminated_error() {
     let src = "\"Hello";
     let mut scanner = Scanner::new(src);
     match scanner.scan_tokens() {
         Err(msg) => {
             assert_eq!(msg, "Unterminated string at possition [1 | 0:6]: \"Hello\n".to_string());
+        },
+        Ok(_) => ()
+    }
+}
+
+#[test]
+fn string_unexpected_char_error() {
+    let src = "\"\\w\"";
+    let mut scanner = Scanner::new(src);
+    match scanner.scan_tokens() {
+        Err(msg) => {
+            assert_eq!(msg, "Unexpected charrecter at possition [1 | 0:3]: \"\\w\n".to_string());
+        },
+        Ok(_) => ()
+    }
+}
+
+
+#[test]
+fn char_unterminated_error() {
+    let src = "'A";
+    let mut scanner = Scanner::new(src);
+    match scanner.scan_tokens() {
+        Err(msg) => {
+            assert_eq!(msg, "Unterminated char at possition [1 | 0:2]: 'A\n".to_string());
+        },
+        Ok(_) => ()
+    }
+}
+
+#[test]
+fn char_unexpected_char_error() {
+    let src = "'\\w'";
+    let mut scanner = Scanner::new(src);
+    match scanner.scan_tokens() {
+        Err(msg) => {
+            assert_eq!(msg, "Unexpected charrecter at possition [1 | 0:3]: '\\w\n".to_string());
         },
         Ok(_) => ()
     }

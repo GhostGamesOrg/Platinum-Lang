@@ -51,6 +51,7 @@ pub enum TokenType {
     // Literals.
     Identifier,
     String,
+    Char,
     Float,
     Integer,
     Bool,
@@ -116,6 +117,7 @@ pub enum LiteralValue {
     FloatValue(f64),
 
     StringValue(String),
+    CharValue(char),
     IdentifierValue(String),
 }
 
