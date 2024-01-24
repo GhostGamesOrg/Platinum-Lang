@@ -1,4 +1,4 @@
-use interpriter::lexer::{lexer::*, token::TokenType};
+use interpriter::lexer::{lexer::*, token::{TokenType, LiteralValue}};
 
 #[test]
 fn handle_one_char_tokens() {
@@ -7,6 +7,18 @@ fn handle_one_char_tokens() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 12);
+    assert_eq!(scanner.tokens[0].lexeme, "(".to_string());
+    assert_eq!(scanner.tokens[1].lexeme, ")".to_string());
+    assert_eq!(scanner.tokens[2].lexeme, "[".to_string());
+    assert_eq!(scanner.tokens[3].lexeme, "]".to_string());
+    assert_eq!(scanner.tokens[4].lexeme, "{".to_string());
+    assert_eq!(scanner.tokens[5].lexeme, "}".to_string());
+    assert_eq!(scanner.tokens[6].lexeme, ",".to_string());
+    assert_eq!(scanner.tokens[7].lexeme, ".".to_string());
+    assert_eq!(scanner.tokens[8].lexeme, ";".to_string());
+    assert_eq!(scanner.tokens[9].lexeme, ":".to_string());
+    assert_eq!(scanner.tokens[10].lexeme, "~".to_string());
+    
     assert_eq!(scanner.tokens[0].token_type, TokenType::LeftParen);
     assert_eq!(scanner.tokens[1].token_type, TokenType::RightParen);
     assert_eq!(scanner.tokens[2].token_type, TokenType::LeftBrace);
@@ -28,6 +40,25 @@ fn handle_multi_char_tokens() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 19);
+    assert_eq!(scanner.tokens[0].lexeme, "--".to_string());
+    assert_eq!(scanner.tokens[1].lexeme, "++".to_string());
+    assert_eq!(scanner.tokens[2].lexeme, "-=".to_string());
+    assert_eq!(scanner.tokens[3].lexeme, "+=".to_string());
+    assert_eq!(scanner.tokens[4].lexeme, "/=".to_string());
+    assert_eq!(scanner.tokens[5].lexeme, "*=".to_string());
+    assert_eq!(scanner.tokens[6].lexeme, "==".to_string());
+    assert_eq!(scanner.tokens[7].lexeme, "!=".to_string());
+    assert_eq!(scanner.tokens[8].lexeme, ">=".to_string());
+    assert_eq!(scanner.tokens[9].lexeme, "<=".to_string());
+    assert_eq!(scanner.tokens[10].lexeme, ">>".to_string());
+    assert_eq!(scanner.tokens[11].lexeme, ">>=".to_string());
+    assert_eq!(scanner.tokens[12].lexeme, ">>>".to_string());
+    assert_eq!(scanner.tokens[13].lexeme, "<<".to_string());
+    assert_eq!(scanner.tokens[14].lexeme, "<<=".to_string());
+    assert_eq!(scanner.tokens[15].lexeme, "??".to_string());
+    assert_eq!(scanner.tokens[16].lexeme, "&&".to_string());
+    assert_eq!(scanner.tokens[17].lexeme, "||".to_string());
+
     assert_eq!(scanner.tokens[0].token_type, TokenType::MinusMinus);
     assert_eq!(scanner.tokens[1].token_type, TokenType::PlusPlus);
     assert_eq!(scanner.tokens[2].token_type, TokenType::MinusEqual);
@@ -55,11 +86,14 @@ fn handle_comments_tokens() {
     let mut scanner = Scanner::new(src);
     let _ = scanner.scan_tokens();
 
-    for token in scanner.tokens.iter() {
-        println!("{:?}", token);
-    }
-
     assert_eq!(scanner.tokens.len(), 7);
+    assert_eq!(scanner.tokens[0].lexeme, "// this is simple comment".to_string());
+    assert_eq!(scanner.tokens[1].lexeme, "(".to_string());
+    assert_eq!(scanner.tokens[2].lexeme, ")".to_string());
+    assert_eq!(scanner.tokens[3].lexeme, "(".to_string());
+    assert_eq!(scanner.tokens[4].lexeme, ")".to_string());
+    assert_eq!(scanner.tokens[5].lexeme, "/// this is doc comment".to_string());
+
     assert_eq!(scanner.tokens[0].token_type, TokenType::Coment);
     assert_eq!(scanner.tokens[1].token_type, TokenType::LeftParen);
     assert_eq!(scanner.tokens[2].token_type, TokenType::RightParen);
@@ -67,6 +101,32 @@ fn handle_comments_tokens() {
     assert_eq!(scanner.tokens[4].token_type, TokenType::RightParen);
     assert_eq!(scanner.tokens[5].token_type, TokenType::DocComent);
     assert_eq!(scanner.tokens[6].token_type, TokenType::EOF);
+}
+
+#[test]
+fn handle_string_tokens() {
+    let src = "\"Hello\"";
+    let mut scanner = Scanner::new(src);
+    let _ = scanner.scan_tokens();
+
+    assert_eq!(scanner.tokens.len(), 2);
+    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::StringValue("Hello".to_string())));
+    assert_eq!(scanner.tokens[0].lexeme, "\"Hello\"".to_string());
+    assert_eq!(scanner.tokens[0].token_type, TokenType::String);
+    assert_eq!(scanner.tokens[1].token_type, TokenType::EOF);
+}
+
+
+#[test]
+fn handle_errors() {
+    let src = "\"Hello";
+    let mut scanner = Scanner::new(src);
+    match scanner.scan_tokens() {
+        Err(msg) => {
+            assert_eq!(msg, "Unterminated string at possition [1 | 0:6]: \"Hello\n".to_string());
+        },
+        Ok(_) => ()
+    }
 }
 
 // for token in scanner.tokens.iter() {

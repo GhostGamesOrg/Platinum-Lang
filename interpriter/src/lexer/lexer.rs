@@ -46,10 +46,10 @@ impl Scanner {
 
         if errors.len() > 0 {
             let mut joined = "".to_string();
-            let _ = errors.iter().map(|msg| {
+            for msg in errors.iter() {
                 joined.push_str(&msg);
                 joined.push_str("\n");
-            });
+            }
             return Err(joined);
         }
         
@@ -233,6 +233,8 @@ impl Scanner {
     }
 
     fn string(&mut self) -> Result<(), String> {
+        let pos_start = self.get_pos() - 1;
+
         let mut buffer = String::new();
 
         while self.peek() != '"' && !self.is_at_end() {
@@ -256,24 +258,29 @@ impl Scanner {
                     } else if self.char_match('"') {
                         buffer.push('\"')
                     } else if self.char_match('u') {
-                        let mut u_buffer = String::new();
-                        let u_c = self.advance();
-                        while u_c.is_digit(16) {
-                            
-                        }
-                        buffer.push('\u')
+                        // let mut u_buffer = String::new();
+                        // let u_c = self.advance();
+                        // while u_c.is_digit(16) {
+                        //     
+                        // }
+                        // buffer.push('\u');
+                        todo!("Unicode");
                     } else {
                         return Err("Unexpected charrecter".to_string());
                     }
-                }
+                },
+                _ => buffer.push(c)
             }
         }
         
         if self.is_at_end() {
-            return Err("Unterminated string".to_string());
+            let lexeme = self.get_lexeme((self.line, pos_start, self.current));
+            return Err(format!("Unterminated string at possition [{} | {}:{}]: {}", self.line, pos_start, self.current, lexeme));
         }
         
         self.advance();
+
+        self.add_token_lit(TokenType::String, Some(LiteralValue::StringValue(buffer)), (self.line, pos_start, self.get_pos()));
 
         Ok(())
     }
@@ -316,18 +323,23 @@ impl Scanner {
         self.current >= self.src.len()
     }
 
-    fn add_token(&mut self, token_type: TokenType, possition: Possition) {
-        self.add_token_lit(token_type, None, possition);
-    }
-
-    fn add_token_lit(&mut self, token_type: TokenType, literal: Option<LiteralValue>, possition: Possition) {
+    fn get_lexeme(&self, possition: Possition) -> String {
         let mut lexeme = String::new();
         let bytes = self.src.as_bytes();
 
         for i in possition.1..possition.2 {
             lexeme.push(bytes[i] as char);
         }
-        
+
+        lexeme
+    }
+
+    fn add_token(&mut self, token_type: TokenType, possition: Possition) {
+        self.add_token_lit(token_type, None, possition);
+    }
+
+    fn add_token_lit(&mut self, token_type: TokenType, literal: Option<LiteralValue>, possition: Possition) {
+        let lexeme = self.get_lexeme(possition);
         self.tokens.push(Token::new(token_type, lexeme, literal, possition));
     }
 }
