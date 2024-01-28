@@ -1,3 +1,5 @@
+use std::str::Chars;
+
 use crate::lexer::token::*;
 
 macro_rules! add_single_tokens {
@@ -21,27 +23,67 @@ fn is_hex(c: char) -> bool {
     c.is_digit(16)
 }
 
-pub struct Scanner {
+fn is_idetifier_char(c: char) -> bool {
+    c.is_alphabetic() || c == '_'
+}
+
+fn str_to_keyword(string: &str) -> Option<TokenType> {
+    match string {
+        "and" => Some(TokenType::And),
+        "or" => Some(TokenType::Or),
+        "if" => Some(TokenType::If),
+        "else" => Some(TokenType::Else),
+        "class" => Some(TokenType::Class),
+        "super" => Some(TokenType::Super),
+        "this" => Some(TokenType::This),
+        "true" => Some(TokenType::True),
+        "false" => Some(TokenType::False),
+        "fun" => Some(TokenType::Fun),
+        "return" => Some(TokenType::Return),
+        "for" => Some(TokenType::For),
+        "while" => Some(TokenType::While),
+        "do" => Some(TokenType::DoWhile),
+        "loop" => Some(TokenType::Loop),
+        "break" => Some(TokenType::Break),
+        "continue" => Some(TokenType::Continue),
+        "nil" => Some(TokenType::Nil),
+        "let" => Some(TokenType::Let),
+        _ => None
+    }
+}
+
+pub struct Scanner<'s> {
+    file_path: String,
     src: String,
+    chars: Chars<'s>,
     pub tokens: Vec<Token>,
     current_pos: usize,
     current: char,
+    next: char,
     line: usize,
+    col: usize,
 }
 
-impl Scanner {
-    pub fn new(src: &str) -> Scanner {
+impl<'s> Scanner<'s> {
+    pub fn new(file_path: &str, src: &'s str) -> Scanner<'s> {
         Scanner {
+            file_path: file_path.to_string(),
             src: src.to_string(),
+            chars: src.chars(),
             tokens: vec![],
             current_pos: 0,
             current: ' ',
+            next: ' ',
             line: 1,
+            col: 0,
         }
     }
 
     pub fn scan_tokens(&mut self) -> Result<Vec<Token>, String> {
         let mut errors: Vec<String> = vec![];
+
+        self.advance();
+        self.current_pos = 0;
 
         while !self.is_at_end() {
             match self.scan_token() {
@@ -233,7 +275,10 @@ impl Scanner {
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
             }
             ' ' | '\r' | '\t' => {}
-            '\n' => self.line += 1,
+            '\n' => {
+                self.line += 1;
+                self.col = 1;
+            }
             '"' => {
                 match self.string() {
                     Ok(_) => (),
@@ -261,11 +306,43 @@ impl Scanner {
                             Err(msg) => return Err(msg)
                         }
                     }
+                } else if is_idetifier_char(c) {
+                    match self.identifier() {
+                        Ok(_) => (),
+                        Err(msg) => return Err(msg)
+                    };
                 } else {
-                    return Err(format!("Unrecognized char at possition [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, c));
+                    return Err(format!("Unrecognized char at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, c));
                 }
             }
         }
+        Ok(())
+    }
+
+    fn identifier(&mut self) -> Result<(), String> {
+        let pos_start = self.get_pos() - 1;
+
+        let mut buffer = String::new();
+        
+        while is_idetifier_char(self.current) {
+            buffer.push(self.current);
+
+            if self.is_at_end() {
+                break;
+            }
+
+            self.advance();
+        }
+
+        match str_to_keyword(&buffer) {
+            Some(token_type) => {
+                self.add_token(token_type, (self.line, pos_start, self.get_pos()));
+            }
+            _ => {
+                self.add_token_lit(TokenType::Identifier, Some(LiteralValue::IdentifierValue(buffer)), (self.line, pos_start, self.get_pos()));
+            }
+        }
+
         Ok(())
     }
 
@@ -305,7 +382,7 @@ impl Scanner {
                     } else {
                         self.advance();
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        return Err(format!("Unexpected charrecter at possition [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme));
+                        return Err(format!("Unexpected charrecter at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
                     }
                 },
                 _ => buffer.push(self.current)
@@ -316,7 +393,7 @@ impl Scanner {
         
         if self.is_at_end() && self.current != '"' {
             let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-            return Err(format!("Unterminated string at possition [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme));
+            return Err(format!("Unterminated string at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
         }
 
         self.add_token_lit(TokenType::String, Some(LiteralValue::StringValue(buffer)), (self.line, pos_start, self.get_pos()));
@@ -332,7 +409,7 @@ impl Scanner {
             if self.current == '\n' {
                 self.line += 1;
                 let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                return Err(format!("Unexpected charrecter at possition [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme));
+                return Err(format!("Unexpected charrecter at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
             }
 
             match self.current {
@@ -360,7 +437,7 @@ impl Scanner {
                     } else {
                         self.advance();
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        return Err(format!("Unexpected charrecter at possition [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme));
+                        return Err(format!("Unexpected charrecter at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
                     }
                 },
                 _ => result = self.current
@@ -371,7 +448,7 @@ impl Scanner {
         
         if self.is_at_end() && self.current != '\'' {
             let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-            return Err(format!("Unterminated char at possition [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme));
+            return Err(format!("Unterminated char at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
         }
 
         self.add_token_lit(TokenType::Char, Some(LiteralValue::CharValue(result)), (self.line, pos_start, self.get_pos()));
@@ -392,15 +469,15 @@ impl Scanner {
                 if with_dot {
                     self.advance();
                     let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    return Err(format!("Unexpected dot in number at possition [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme));
+                    return Err(format!("Unexpected dot in number at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
                 } else {
                     with_dot = true;
                     buffer.push(self.current);
                 }
-            } else if !self.current.is_digit(10) {
-                break;
             } else if self.current.is_digit(10) {
                 buffer.push(self.current);
+            } else {
+                break;
             }
 
             if self.is_at_end() {
@@ -420,7 +497,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<f32>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `f32` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `f32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
 
                         LiteralValue::F32Value(number)
@@ -430,19 +507,19 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<f64>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `f64` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `f64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
 
                         LiteralValue::F64Value(number)
                     } else {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        return Err(format!("Unrecognized number type at possition [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme));
+                        return Err(format!("Unrecognized number type at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
                     }
                 } else {
                     let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                     let number = match buffer.parse::<f64>() {
                         Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for the float [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                        Err(_) => return Err(format!("To big value for the float [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                     };
                     
                     LiteralValue::UndefinedFloatValue(number)
@@ -455,7 +532,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<i8>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i8` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `i8` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::I8Value(number)
                         
@@ -465,7 +542,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<i16>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i16` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `i16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::I16Value(number)
                         
@@ -475,7 +552,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<i32>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i32` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `i32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::I32Value(number)
                         
@@ -485,7 +562,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<i64>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i64` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `i64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::I64Value(number)
                         
@@ -496,7 +573,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<i128>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i128` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `i128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::I128Value(number)
                         
@@ -504,7 +581,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<isize>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `isize` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `isize` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::ISizeValue(number)
 
@@ -518,7 +595,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<u8>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u8` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `u8` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::U8Value(number)
                         
@@ -528,7 +605,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<u16>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u16` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `u16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::U16Value(number)
                         
@@ -538,7 +615,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<u32>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u32` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `u32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::U32Value(number)
                         
@@ -548,7 +625,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<u64>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u64` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `u64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::U64Value(number)
                         
@@ -559,7 +636,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<u128>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u128` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `u128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::U128Value(number)
                         
@@ -567,7 +644,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<usize>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `usize` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `usize` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::USizeValue(number)
                     }
@@ -579,7 +656,7 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<f32>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `f32` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `f32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
 
                         LiteralValue::F32Value(number)
@@ -589,19 +666,19 @@ impl Scanner {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<f64>() {
                             Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `f64` [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                            Err(_) => return Err(format!("To big value for type `f64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
 
                         LiteralValue::F64Value(number)
                     } else {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        return Err(format!("Unrecognized number type at possition [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme));
+                        return Err(format!("Unrecognized number type at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
                     }
                 } else {
                     let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                     let number = match buffer.parse::<i128>() {
                         Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for the integer number [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                        Err(_) => return Err(format!("To big value for the integer number [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                     };
                     LiteralValue::UndefinedIntValue(number)
                 }
@@ -628,7 +705,7 @@ impl Scanner {
             let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
             let number = match i128::from_str_radix(&buffer, 16) {
                 Ok(num) => num,
-                Err(_) => return Err(format!("To big value for the integer number [{} | {}:{}]: {}", self.line, pos_start, self.current_pos, lexeme))
+                Err(_) => return Err(format!("To big value for the integer number [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
             };
             LiteralValue::UndefinedIntValue(number)
         };
@@ -638,41 +715,26 @@ impl Scanner {
     }
     
     fn advance(&mut self) {
-        if self.is_at_end() {
-            self.current = '\0';
-        } else {
-            let current_char = self.src.as_bytes()[self.current_pos];
-            self.current_pos += 1;
-
-            self.current = current_char as char
-        }
+        let next_char = match self.chars.next() {
+            Some(c) => c,
+            _ => '\0'
+        };
+        self.current_pos += 1;
+        self.col += 1;
+    
+        self.current = self.next;
+        self.next = next_char;
     }
-
-    fn peek(&self, relative: usize) -> char {
-        if self.relative_pos_is_at_end(relative) {
-            return '\0';
-        }
-        self.src.as_bytes()[self.current_pos + relative] as char
-    }
-
 
     fn char_match(&mut self, expected: char) -> bool {
-        if self.is_at_end() {
-            return false;
-        }
-        if self.peek(0) != expected {
+        if self.next != expected {
             return false;
         }
 
-        self.current_pos += 1;
-        self.current = expected;
+        self.advance();
         true
     }
 
-    // fn peek_pos(&self, pos: usize) -> Option<char> {
-    //     self.src.chars().nth(self.current + pos)
-    // }
-    
     fn get_pos(&self) -> usize {
         self.current_pos
     }
@@ -686,8 +748,8 @@ impl Scanner {
     }
 
     fn get_lexeme(&self, possition: Possition) -> String {
-        let lexeme = &self.src[possition.1..possition.2];
-        
+        let lexeme = &self.src.chars().skip(possition.1).take(possition.2 - possition.1).collect::<String>();
+    
         lexeme.trim().to_string()
     }
 

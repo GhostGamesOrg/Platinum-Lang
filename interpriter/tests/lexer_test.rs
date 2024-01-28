@@ -10,8 +10,9 @@ fn read_file(path: &str) -> Result<String, Box<dyn std::error::Error>> {
 
 #[test]
 fn handle_one_char_tokens() {
+    let file_path = "<stdin>";
     let src = "() [] {} , . ; : ~";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 12);
@@ -43,8 +44,9 @@ fn handle_one_char_tokens() {
 
 #[test]
 fn handle_multi_char_tokens() {
+    let file_path = "<stdin>";
     let src = "-- ++ -= += /= *= == != >= <= >> >>= >>> << <<= ?? && ||";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 19);
@@ -90,9 +92,10 @@ fn handle_multi_char_tokens() {
 
 #[test]
 fn handle_comments_tokens() {
-    let src: String = read_file("tests\\codes\\handle_comments_tokens.ppl").unwrap();
+    let file_path = "tests\\codes\\handle_comments_tokens.ppl";
+    let src: String = read_file(file_path).unwrap();
 
-    let mut scanner = Scanner::new(src.as_str());
+    let mut scanner = Scanner::new(file_path, src.as_str());
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 7);
@@ -114,8 +117,9 @@ fn handle_comments_tokens() {
 
 #[test]
 fn handle_string_tokens() {
+    let file_path = "<stdin>";
     let src = "\"Hello\"";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
@@ -125,14 +129,14 @@ fn handle_string_tokens() {
     assert_eq!(scanner.tokens[1].token_type, TokenType::EOF);
 }
 
-
 #[test]
 fn string_unterminated_error() {
+    let file_path = "<stdin>";
     let src = "\"Hello";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     match scanner.scan_tokens() {
         Err(msg) => {
-            assert_eq!(msg, "Unterminated string at possition [1 | 0:6]: \"Hello\n".to_string());
+            assert_eq!(msg, "Unterminated string at possition [<stdin>:1:7]: \"Hello\n".to_string());
         },
         Ok(_) => ()
     }
@@ -140,11 +144,12 @@ fn string_unterminated_error() {
 
 #[test]
 fn string_unexpected_char_error() {
+    let file_path = "<stdin>";
     let src = "\"\\w\"";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     match scanner.scan_tokens() {
         Err(msg) => {
-            assert_eq!(msg, "Unexpected charrecter at possition [1 | 0:3]: \"\\w\n".to_string());
+            assert_eq!(msg, "Unexpected charrecter at possition [<stdin>:1:4]: \"\\w\n".to_string());
         },
         Ok(_) => ()
     }
@@ -152,8 +157,9 @@ fn string_unexpected_char_error() {
 
 #[test]
 fn handle_char_tokens() {
+    let file_path = "<stdin>";
     let src = "'A'";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
@@ -165,15 +171,17 @@ fn handle_char_tokens() {
 
 #[test]
 fn handle_special_chars_tokens() {
-    let src: String = read_file("tests\\codes\\handle_special_chars_tokens.ppl").unwrap();
+    let file_path = "tests\\codes\\handle_special_chars_tokens.ppl";
+    let src: String = read_file(file_path).unwrap();
 
-    let mut scanner = Scanner::new(src.as_str());
+    let mut scanner = Scanner::new(file_path, src.as_str());
     let _ = scanner.scan_tokens();
 
-    assert_eq!(scanner.tokens.len(), 7);
+    assert_eq!(scanner.tokens.len(), 9);
     assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::CharValue('A')));
     assert_eq!(scanner.tokens[2].literal, Some(LiteralValue::CharValue('\t')));
     assert_eq!(scanner.tokens[4].literal, Some(LiteralValue::CharValue('\n')));
+    assert_eq!(scanner.tokens[6].literal, Some(LiteralValue::CharValue('Ф')));
 
     assert_eq!(scanner.tokens[0].lexeme, "'A'".to_string());
     assert_eq!(scanner.tokens[1].lexeme, "// Тут будет просто 'A'".to_string());
@@ -181,6 +189,8 @@ fn handle_special_chars_tokens() {
     assert_eq!(scanner.tokens[3].lexeme, "// Тут уже будет '\\t'".to_string());
     assert_eq!(scanner.tokens[4].lexeme, "'\\n'".to_string());
     assert_eq!(scanner.tokens[5].lexeme, "// Тут уже будет '\\n'".to_string());
+    assert_eq!(scanner.tokens[6].lexeme, "'Ф'".to_string());
+    assert_eq!(scanner.tokens[7].lexeme, "// Тут будет просто 'Ф'".to_string());
 
     assert_eq!(scanner.tokens[0].token_type, TokenType::Char);
     assert_eq!(scanner.tokens[1].token_type, TokenType::Coment);
@@ -188,16 +198,19 @@ fn handle_special_chars_tokens() {
     assert_eq!(scanner.tokens[3].token_type, TokenType::Coment);
     assert_eq!(scanner.tokens[4].token_type, TokenType::Char);
     assert_eq!(scanner.tokens[5].token_type, TokenType::Coment);
-    assert_eq!(scanner.tokens[6].token_type, TokenType::EOF);
+    assert_eq!(scanner.tokens[6].token_type, TokenType::Char);
+    assert_eq!(scanner.tokens[7].token_type, TokenType::Coment);
+    assert_eq!(scanner.tokens[8].token_type, TokenType::EOF);
 }
 
 #[test]
 fn char_unterminated_error() {
+    let file_path = "<stdin>";
     let src = "'A";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     match scanner.scan_tokens() {
         Err(msg) => {
-            assert_eq!(msg, "Unterminated char at possition [1 | 0:2]: 'A\n".to_string());
+            assert_eq!(msg, "Unterminated char at possition [<stdin>:1:3]: 'A\n".to_string());
         },
         Ok(_) => ()
     }
@@ -205,11 +218,12 @@ fn char_unterminated_error() {
 
 #[test]
 fn char_unexpected_char_error() {
+    let file_path = "<stdin>";
     let src = "'\\w'";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     match scanner.scan_tokens() {
         Err(msg) => {
-            assert_eq!(msg, "Unexpected charrecter at possition [1 | 0:3]: '\\w\n".to_string());
+            assert_eq!(msg, "Unexpected charrecter at possition [<stdin>:1:4]: '\\w\n".to_string());
         },
         Ok(_) => ()
     }
@@ -217,8 +231,9 @@ fn char_unexpected_char_error() {
 
 #[test]
 fn handle_number_token() {
+    let file_path = "<stdin>";
     let src = "100";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
@@ -228,8 +243,9 @@ fn handle_number_token() {
 
 #[test]
 fn handle_number_with_underscore_token() {
+    let file_path = "<stdin>";
     let src = "1_000_000";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
@@ -239,8 +255,9 @@ fn handle_number_with_underscore_token() {
 
 #[test]
 fn handle_numbers_tokens() {
-    let src = read_file("tests\\codes\\handle_number_tokens.ppl").unwrap();
-    let mut scanner = Scanner::new(src.as_str());
+    let file_path = "tests\\codes\\handle_number_tokens.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 19);
@@ -282,36 +299,123 @@ fn handle_numbers_tokens() {
     assert_eq!(scanner.tokens[16].literal, Some(LiteralValue::U128Value(100)));
     assert_eq!(scanner.tokens[17].literal, Some(LiteralValue::USizeValue(100)));
     
-    assert_eq!(scanner.tokens[0].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[1].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[2].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[3].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[4].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[5].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[6].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[7].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[8].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[9].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[10].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[11].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[12].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[13].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[14].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[15].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[16].token_type, TokenType::Number);
-    assert_eq!(scanner.tokens[17].token_type, TokenType::Number);
+    for i in 0..18 {
+        assert_eq!(scanner.tokens[i].token_type, TokenType::Number);
+    }
+    
     assert_eq!(scanner.tokens[18].token_type, TokenType::EOF);
 }
 
 #[test]
 fn handle_hex_number_token() {
+    let file_path = "<stdin>";
     let src = "0xFF";
-    let mut scanner = Scanner::new(src);
+    let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
     assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::UndefinedIntValue(0xFF)));
+    assert_eq!(scanner.tokens[0].token_type, TokenType::Number);
     assert_eq!(scanner.tokens[1].token_type, TokenType::EOF);
+}
+
+#[test]
+fn handle_idetifier_token() {
+    let file_path = "<stdin>";
+    let src = "hello";
+    let mut scanner = Scanner::new(file_path, src);
+    let _ = scanner.scan_tokens();
+
+    assert_eq!(scanner.tokens.len(), 2);
+    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::IdentifierValue("hello".to_string())));
+    assert_eq!(scanner.tokens[0].token_type, TokenType::Identifier);
+    assert_eq!(scanner.tokens[1].token_type, TokenType::EOF);
+}
+
+#[test]
+fn handle_underscore_idetifier_token() {
+    let file_path = "<stdin>";
+    let src = "_";
+    let mut scanner = Scanner::new(file_path, src);
+    let _ = scanner.scan_tokens();
+
+    assert_eq!(scanner.tokens.len(), 2);
+    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::IdentifierValue("_".to_string())));
+    assert_eq!(scanner.tokens[0].token_type, TokenType::Identifier);
+    assert_eq!(scanner.tokens[1].token_type, TokenType::EOF);
+}
+
+#[test]
+fn handle_not_ascii_idetifier_token() {
+    let file_path = "<stdin>";
+    let src = "привет";
+    let mut scanner = Scanner::new(file_path, src);
+    let _ = scanner.scan_tokens();
+
+    for token in scanner.tokens.iter() {
+        println!("{:?}", token);
+    }
+
+    assert_eq!(scanner.tokens.len(), 2);
+    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::IdentifierValue("привет".to_string())));
+    assert_eq!(scanner.tokens[0].token_type, TokenType::Identifier);
+    assert_eq!(scanner.tokens[1].token_type, TokenType::EOF);
+}
+
+#[test]
+fn handle_standart_idetifiers_token() {
+    let file_path = "tests\\codes\\handle_standart_idetifiers_token.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    assert_eq!(scanner.tokens.len(), 20);
+
+    assert_eq!(scanner.tokens[0].lexeme, "and".to_string());
+    assert_eq!(scanner.tokens[1].lexeme, "or".to_string());
+    assert_eq!(scanner.tokens[2].lexeme, "if".to_string());
+    assert_eq!(scanner.tokens[3].lexeme, "else".to_string());
+    assert_eq!(scanner.tokens[4].lexeme, "class".to_string());
+    assert_eq!(scanner.tokens[5].lexeme, "super".to_string());
+    assert_eq!(scanner.tokens[6].lexeme, "this".to_string());
+    assert_eq!(scanner.tokens[7].lexeme, "true".to_string());
+    assert_eq!(scanner.tokens[8].lexeme, "false".to_string());
+    assert_eq!(scanner.tokens[9].lexeme, "fun".to_string());
+    assert_eq!(scanner.tokens[10].lexeme, "return".to_string());
+    assert_eq!(scanner.tokens[11].lexeme, "for".to_string());
+    assert_eq!(scanner.tokens[12].lexeme, "while".to_string());
+    assert_eq!(scanner.tokens[13].lexeme, "do".to_string());
+    assert_eq!(scanner.tokens[14].lexeme, "loop".to_string());
+    assert_eq!(scanner.tokens[15].lexeme, "break".to_string());
+    assert_eq!(scanner.tokens[16].lexeme, "continue".to_string());
+    assert_eq!(scanner.tokens[17].lexeme, "nil".to_string());
+    assert_eq!(scanner.tokens[18].lexeme, "let".to_string());
+    
+    assert_eq!(scanner.tokens[0].token_type, TokenType::And);
+    assert_eq!(scanner.tokens[1].token_type, TokenType::Or);
+    assert_eq!(scanner.tokens[2].token_type, TokenType::If);
+    assert_eq!(scanner.tokens[3].token_type, TokenType::Else);
+    assert_eq!(scanner.tokens[4].token_type, TokenType::Class);
+    assert_eq!(scanner.tokens[5].token_type, TokenType::Super);
+    assert_eq!(scanner.tokens[6].token_type, TokenType::This);
+    assert_eq!(scanner.tokens[7].token_type, TokenType::True);
+    assert_eq!(scanner.tokens[8].token_type, TokenType::False);
+    assert_eq!(scanner.tokens[9].token_type, TokenType::Fun);
+    assert_eq!(scanner.tokens[10].token_type, TokenType::Return);
+    assert_eq!(scanner.tokens[11].token_type, TokenType::For);
+    assert_eq!(scanner.tokens[12].token_type, TokenType::While);
+    assert_eq!(scanner.tokens[13].token_type, TokenType::DoWhile);
+    assert_eq!(scanner.tokens[14].token_type, TokenType::Loop);
+    assert_eq!(scanner.tokens[15].token_type, TokenType::Break);
+    assert_eq!(scanner.tokens[16].token_type, TokenType::Continue);
+    assert_eq!(scanner.tokens[17].token_type, TokenType::Nil);
+    assert_eq!(scanner.tokens[18].token_type, TokenType::Let);
+
+    for i in 0..20 {
+        assert_eq!(scanner.tokens[i].literal, None);
+    }
+
+    assert_eq!(scanner.tokens[19].token_type, TokenType::EOF);
 }
 
 // for token in scanner.tokens.iter() {

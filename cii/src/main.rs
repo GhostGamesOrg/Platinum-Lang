@@ -14,7 +14,7 @@ fn run_file(path: &str) -> Result<(), String> {
     // Reads file first
     match fs::read_to_string(path) {
         Err(msg) => return Err(msg.to_string()),
-        Ok(src) => run(&src),
+        Ok(src) => run(path, &src),
     }
 }
 
@@ -42,7 +42,7 @@ fn run_prompt() -> Result<(), String> {
             },
             Err(_) => return Err("Couldnt read line".to_string()),
         }
-        match run(&buffer) {
+        match run("<stdin>", &buffer) {
             Ok(_) => (),
             Err(msg) => println!("{}", msg),
         }
@@ -50,8 +50,8 @@ fn run_prompt() -> Result<(), String> {
 }
 
 /// Runs source code
-fn run(src: &str) -> Result<(), String> {
-    let mut scanner = Scanner::new(src);
+fn run(file_path: &str, src: &str) -> Result<(), String> {
+    let mut scanner = Scanner::new(file_path, src);
 
     let tokens = scanner.scan_tokens()?;
     
