@@ -52,8 +52,7 @@ pub enum TokenType {
     Identifier,
     String,
     Char,
-    Float,
-    Integer,
+    Number,
     Bool,
 
     DocComent,
@@ -93,28 +92,25 @@ pub enum TokenType {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum LiteralValue {
-    // I8Value(i8),              // 100i8
-    // I16Value(i16),            // 100i16
-    // I32Value(i32),            // 100i32
-    // I64Value(i64),            // 100i64
-    // I128Value(i128),          // 100i128
-    // ISizeValue(isize),        // 100i
+    I8Value(i8),              // 100i8
+    I16Value(i16),            // 100i16
+    I32Value(i32),            // 100i32
+    I64Value(i64),            // 100i64
+    I128Value(i128),          // 100i128
+    ISizeValue(isize),        // 100i
 
-    // U8Value(u8),              // 100u8
-    // U16Value(u16),            // 100u16
-    // U32Value(u32),            // 100u32
-    // U64Value(u64),            // 100u64
-    // U128Value(u128),          // 100u128
-    // USizeValue(usize),        // 100u
+    U8Value(u8),              // 100u8
+    U16Value(u16),            // 100u16
+    U32Value(u32),            // 100u32
+    U64Value(u64),            // 100u64
+    U128Value(u128),          // 100u128
+    USizeValue(usize),        // 100u
 
-    // F32Value(f32),            // 10.0f32
-    // F64Value(f64),            // 10.0f64
+    F32Value(f32),            // 10f32
+    F64Value(f64),            // 10f64
 
-    // UndefinedIntValue(i128),  // 100
-    // UndefinedFloatValue(f64), // 10.0
-
-    IntValue(i128),
-    FloatValue(f64),
+    UndefinedIntValue(i128),  // 100
+    UndefinedFloatValue(f64), // 10.0
 
     StringValue(String),
     CharValue(char),
