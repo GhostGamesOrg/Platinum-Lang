@@ -1,4 +1,8 @@
 {
     "commentTranslate.targetLanguage": "ru",
-    "CodeGPT.apiKey": "CodeGPT Plus Beta"
+    "CodeGPT.apiKey": "CodeGPT Plus Beta",
+    "rust-analyzer.linkedProjects": [
+        ".\\interpriter\\Cargo.toml",
+        ".\\interpriter\\Cargo.toml"
+    ]
 }

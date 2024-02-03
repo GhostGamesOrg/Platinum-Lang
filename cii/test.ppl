@@ -1,1 +1,19 @@
-safdfas
+class Main {
+    bread: u8;
+
+    fun Main() {
+        this.bread = 3;
+        this.eat_bread();
+        this.eat_bread();
+        this.eat_bread();
+        /// тут по идее срабатывает условие with
+    }
+
+    with (bread == 0) {
+        println("Нужно купить хлеба");
+    }
+
+    fun eat_bread() {
+        this.bread -= 1;
+    }
+}

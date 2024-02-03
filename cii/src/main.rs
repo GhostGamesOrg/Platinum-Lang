@@ -6,6 +6,7 @@ use std::{
 };
 
 use interpriter::lexer::lexer::*;
+use interpriter::parser::parser::Parser;
 
 /// Runs file
 /// Use `metal run <filename>` to run
@@ -24,13 +25,12 @@ fn run_prompt() -> Result<(), String> {
     loop {
         print!(":>> ");
 
-        let mut buffer = String::new();
-
         match io::stdout().flush() {
             Ok(_) => (),
             Err(_) => return Err("Couldnt flush stdout".to_string()),
         }
 
+        let mut buffer = String::new();
         let stdin = io::stdin();
         let mut handle = stdin.lock();
 
@@ -52,12 +52,15 @@ fn run_prompt() -> Result<(), String> {
 /// Runs source code
 fn run(file_path: &str, src: &str) -> Result<(), String> {
     let mut scanner = Scanner::new(file_path, src);
-
-    let tokens = scanner.scan_tokens()?;
-    
-    for token in tokens {
-        println!("{:?}", token);
+    match scanner.scan_tokens() {
+        Err(msg) => println!("{}", msg),
+        _ => ()
     }
+
+    let mut parser = Parser::new(file_path, scanner.tokens.clone());
+    let expr = parser.parse()?;
+
+    println!("{}", expr.evaluate().to_string());
     return Ok(());
 
 }
@@ -68,7 +71,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 1 {
-        println!("Usage: jlox [script]");
+        println!("Usage: metal [script]");
         exit(64);
     } else if args.len() == 2 {
         match run_file(&args[1]) {

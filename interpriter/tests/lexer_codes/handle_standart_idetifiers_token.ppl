@@ -5,8 +5,6 @@ else
 class
 super
 this
-true
-false
 fun
 return
 for
@@ -15,5 +13,7 @@ do
 loop
 break
 continue
-nil
 let
+null
+true
+false

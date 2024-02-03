@@ -1,13 +1,13 @@
 use std::str::Chars;
 
-use crate::lexer::token::*;
+use crate::lexer::token::{*, TokenType::*};
 
 macro_rules! add_single_tokens {
     ($self:expr, $( $c:expr => $token:ident ),*) => {
         match $self.current {
             $(
                 $c => {
-                    $self.add_token(TokenType::$token, ($self.line, $self.get_pos() - 1, $self.get_pos()));
+                    $self.add_token($token, ($self.line, $self.get_pos() - 1, $self.get_pos()));
                     return Ok(());
                 }
 
@@ -29,25 +29,22 @@ fn is_idetifier_char(c: char) -> bool {
 
 fn str_to_keyword(string: &str) -> Option<TokenType> {
     match string {
-        "and" => Some(TokenType::And),
-        "or" => Some(TokenType::Or),
-        "if" => Some(TokenType::If),
-        "else" => Some(TokenType::Else),
-        "class" => Some(TokenType::Class),
-        "super" => Some(TokenType::Super),
-        "this" => Some(TokenType::This),
-        "true" => Some(TokenType::True),
-        "false" => Some(TokenType::False),
-        "fun" => Some(TokenType::Fun),
-        "return" => Some(TokenType::Return),
-        "for" => Some(TokenType::For),
-        "while" => Some(TokenType::While),
-        "do" => Some(TokenType::DoWhile),
-        "loop" => Some(TokenType::Loop),
-        "break" => Some(TokenType::Break),
-        "continue" => Some(TokenType::Continue),
-        "nil" => Some(TokenType::Nil),
-        "let" => Some(TokenType::Let),
+        "and" => Some(And),
+        "or" => Some(Or),
+        "if" => Some(If),
+        "else" => Some(Else),
+        "class" => Some(Class),
+        "super" => Some(Super),
+        "this" => Some(This),
+        "fun" => Some(Fun),
+        "return" => Some(Return),
+        "for" => Some(For),
+        "while" => Some(While),
+        "do" => Some(DoWhile),
+        "loop" => Some(Loop),
+        "break" => Some(Break),
+        "continue" => Some(Continue),
+        "let" => Some(Let),
         _ => None
     }
 }
@@ -97,7 +94,7 @@ impl<'s> Scanner<'s> {
         }
 
         // When programm stops scanning tokens, it adds EOF token.
-        self.add_token(TokenType::EOF, (self.line, self.get_pos(), self.get_pos()));
+        self.add_token(EOF, (self.line, self.get_pos(), self.get_pos()));
 
         if errors.len() > 0 {
             let mut joined = "".to_string();
@@ -134,11 +131,11 @@ impl<'s> Scanner<'s> {
             '-' => {
                 let token = {
                     if self.char_match('=') {
-                        TokenType::MinusEqual
+                        MinusEqual
                     } else if self.char_match('-') {
-                        TokenType::MinusMinus
+                        MinusMinus
                     } else {
-                        TokenType::Minus
+                        Minus
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -146,11 +143,11 @@ impl<'s> Scanner<'s> {
             '+' => {
                 let token = {
                     if self.char_match('=') {
-                        TokenType::PlusEqual
+                        PlusEqual
                     } else if self.char_match('+') {
-                        TokenType::PlusPlus
+                        PlusPlus
                     } else {
-                        TokenType::Plus
+                        Plus
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -160,9 +157,9 @@ impl<'s> Scanner<'s> {
                     if self.char_match('/') {
                         let comment = {
                             if self.char_match('/') {
-                                TokenType::DocComent
+                                DocComent
                             } else {
-                                TokenType::Coment
+                                Coment
                             }
                         };
                         loop {
@@ -173,9 +170,9 @@ impl<'s> Scanner<'s> {
                         }
                         comment
                     } else if self.char_match('=') {
-                        TokenType::SlashEqual
+                        SlashEqual
                     } else {
-                        TokenType::Slash
+                        Slash
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -183,9 +180,9 @@ impl<'s> Scanner<'s> {
             '*' => {
                 let token = {
                     if self.char_match('=') {
-                        TokenType::StarEqual
+                        StarEqual
                     } else {
-                        TokenType::Star
+                        Star
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -193,9 +190,9 @@ impl<'s> Scanner<'s> {
             '!' => {
                 let token = {
                     if self.char_match('=') {
-                        TokenType::BangEqual
+                        BangEqual
                     } else {
-                        TokenType::Bang
+                        Bang
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -203,17 +200,17 @@ impl<'s> Scanner<'s> {
             '>' => {
                 let token = {
                     if self.char_match('=') {
-                        TokenType::GreaterEqual
+                        GreaterEqual
                     } else if self.char_match('>') {
                         if self.char_match('=') {
-                            TokenType::GreaterGreaterEqual
+                            GreaterGreaterEqual
                         } else if self.char_match('>') {
-                            TokenType::GreaterGreaterGreater
+                            GreaterGreaterGreater
                         } else {
-                            TokenType::GreaterGreater
+                            GreaterGreater
                         }
                     } else{
-                        TokenType::Greater
+                        Greater
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -221,15 +218,15 @@ impl<'s> Scanner<'s> {
             '<' => {
                 let token = {
                     if self.char_match('=') {
-                        TokenType::LessEqual
+                        LessEqual
                     } else if self.char_match('<') {
                         if self.char_match('=') {
-                            TokenType::LessLessEqual
+                            LessLessEqual
                         } else {
-                            TokenType::LessLess
+                            LessLess
                         }
                     } else {
-                        TokenType::Less
+                        Less
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -237,9 +234,9 @@ impl<'s> Scanner<'s> {
             '&' => {
                 let token = {
                     if self.char_match('&') {
-                        TokenType::And
+                        And
                     } else {
-                        TokenType::Ampersant
+                        Ampersant
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -247,9 +244,9 @@ impl<'s> Scanner<'s> {
             '|' => {
                 let token = {
                     if self.char_match('|') {
-                        TokenType::Or
+                        Or
                     } else {
-                        TokenType::Bar
+                        Bar
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -257,9 +254,9 @@ impl<'s> Scanner<'s> {
             '?' => {
                 let token = {
                     if self.char_match('?') {
-                        TokenType::QuestionQuestion
+                        QuestionQuestion
                     } else {
-                        TokenType::Question
+                        Question
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -267,14 +264,14 @@ impl<'s> Scanner<'s> {
             '=' => {
                 let token = {
                     if self.char_match('=') {
-                        TokenType::EqualEqual
+                        EqualEqual
                     } else {
-                        TokenType::Equal
+                        Equal
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
             }
-            ' ' | '\r' | '\t' => {}
+            ' ' | '\r' | '\t' | '\0' => {}
             '\n' => {
                 self.line += 1;
                 self.col = 1;
@@ -312,6 +309,7 @@ impl<'s> Scanner<'s> {
                         Err(msg) => return Err(msg)
                     };
                 } else {
+                    println!("{}", c as u8);
                     return Err(format!("Unrecognized char at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, c));
                 }
             }
@@ -333,16 +331,23 @@ impl<'s> Scanner<'s> {
 
             self.advance();
         }
-
-        match str_to_keyword(&buffer) {
-            Some(token_type) => {
-                self.add_token(token_type, (self.line, pos_start, self.get_pos()));
-            }
-            _ => {
-                self.add_token_lit(TokenType::Identifier, Some(LiteralValue::IdentifierValue(buffer)), (self.line, pos_start, self.get_pos()));
+        
+        if buffer == "true".to_string() {
+            self.add_token_lit(BoolT, Some(LiteralValue::Bool(true)), (self.line, pos_start, self.get_pos()));
+        } else if buffer == "false".to_string() {
+            self.add_token_lit(BoolT, Some(LiteralValue::Bool(false)), (self.line, pos_start, self.get_pos()));
+        } else if buffer == "null".to_string() {
+            self.add_token_lit(Null, Some(LiteralValue::NullLiteral(false)), (self.line, pos_start, self.get_pos()));
+        } else {
+            match str_to_keyword(&buffer) {
+                Some(token_type) => {
+                    self.add_token(token_type, (self.line, pos_start, self.get_pos()));
+                }
+                _ => {
+                    self.add_token_lit(Identifier, Some(LiteralValue::IdentifierValue(buffer)), (self.line, pos_start, self.get_pos()));
+                }
             }
         }
-
         Ok(())
     }
 
@@ -396,7 +401,7 @@ impl<'s> Scanner<'s> {
             return Err(format!("Unterminated string at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
         }
 
-        self.add_token_lit(TokenType::String, Some(LiteralValue::StringValue(buffer)), (self.line, pos_start, self.get_pos()));
+        self.add_token_lit(StringT, Some(LiteralValue::StringValue(buffer)), (self.line, pos_start, self.get_pos()));
 
         Ok(())
     }
@@ -451,7 +456,7 @@ impl<'s> Scanner<'s> {
             return Err(format!("Unterminated char at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
         }
 
-        self.add_token_lit(TokenType::Char, Some(LiteralValue::CharValue(result)), (self.line, pos_start, self.get_pos()));
+        self.add_token_lit(Char, Some(LiteralValue::CharValue(result)), (self.line, pos_start, self.get_pos()));
 
         Ok(())
     }
@@ -483,17 +488,17 @@ impl<'s> Scanner<'s> {
             if self.is_at_end() {
                 break;
             }
-            self.advance();
+            if self.next.is_digit(10) || self.next == '.' || self.next == '_' {
+                self.advance();
+            } else {
+                break;
+            }
         }
 
         let literal = {
             if with_dot {
-                if self.current == 'f' || self.current == 'F' {
-                    self.advance();
-
-                    if self.current == '3' && self.char_match('2') {
-                        self.advance();
-                        
+                if self.char_match('f') || self.char_match('F') {
+                    if self.char_match('3') && self.char_match('2') {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<f32>() {
                             Ok(num) => num,
@@ -501,9 +506,7 @@ impl<'s> Scanner<'s> {
                         };
 
                         LiteralValue::F32Value(number)
-                    } else if self.current == '6' && self.char_match('4') {
-                        self.advance();
-                        
+                    } else if self.char_match('6') && self.char_match('4') {                        
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<f64>() {
                             Ok(num) => num,
@@ -525,10 +528,8 @@ impl<'s> Scanner<'s> {
                     LiteralValue::UndefinedFloatValue(number)
                 }
             } else {
-                if self.current == 'i' || self.current == 'I' {
-                    self.advance();
-
-                    if self.current == '8' {
+                if self.char_match('i') || self.char_match('I') {                    
+                    if self.char_match('8') {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<i8>() {
                             Ok(num) => num,
@@ -536,19 +537,28 @@ impl<'s> Scanner<'s> {
                         };
                         LiteralValue::I8Value(number)
                         
-                    } else if self.current == '1' && self.char_match('6') {
-                        self.advance();
-
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<i16>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::I16Value(number)
+                    } else if self.char_match('1') {
+                        if self.char_match('6') {
+                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                            let number = match buffer.parse::<i16>() {
+                                Ok(num) => num,
+                                Err(_) => return Err(format!("To big value for type `i16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                            };
+                            LiteralValue::I16Value(number)
+                            
+                        } else if self.char_match('2') && self.char_match('8') {
+                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                            let number = match buffer.parse::<i128>() {
+                                Ok(num) => num,
+                                Err(_) => return Err(format!("To big value for type `i128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                            };
+                            LiteralValue::I128Value(number)
+                        } else {
+                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                            return Err(format!("Unknown number type at  [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                        }
                         
-                    } else if self.current == '3' && self.char_match('2') {
-                        self.advance();
-                        
+                    } else if self.char_match('3') && self.char_match('2') {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<i32>() {
                             Ok(num) => num,
@@ -556,26 +566,13 @@ impl<'s> Scanner<'s> {
                         };
                         LiteralValue::I32Value(number)
                         
-                    } else if self.current == '6' && self.char_match('4') {
-                        self.advance();
-                        
+                    } else if self.char_match('6') && self.char_match('4') {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<i64>() {
                             Ok(num) => num,
                             Err(_) => return Err(format!("To big value for type `i64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::I64Value(number)
-                        
-                    } else if self.current =='1' && self.char_match('2') && self.char_match('8') {
-                        self.advance();
-                        self.advance();
-                        
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<i128>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::I128Value(number)
                         
                     } else {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
@@ -586,10 +583,9 @@ impl<'s> Scanner<'s> {
                         LiteralValue::ISizeValue(number)
 
                     }
-                } else if self.current == 'u' || self.current == 'U' {
-                    self.advance();
-
-                    if self.current == '8' {
+                } else if self.char_match('u') || self.char_match('U') {
+                   
+                    if self.char_match('8') {
                         self.advance();
 
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
@@ -599,19 +595,28 @@ impl<'s> Scanner<'s> {
                         };
                         LiteralValue::U8Value(number)
                         
-                    } else if self.current == '1' && self.char_match('6') {
-                        self.advance();
-
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<u16>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::U16Value(number)
-                        
-                    } else if self.current == '3' && self.char_match('2') {
-                        self.advance();
-
+                    
+                    } else if self.char_match('1') {
+                        if self.char_match('6') {
+                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                            let number = match buffer.parse::<u16>() {
+                                Ok(num) => num,
+                                Err(_) => return Err(format!("To big value for type `u16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                            };
+                            LiteralValue::U16Value(number)
+                            
+                        } else if self.char_match('2') && self.char_match('8') {
+                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                            let number = match buffer.parse::<u128>() {
+                                Ok(num) => num,
+                                Err(_) => return Err(format!("To big value for type `u128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                            };
+                            LiteralValue::U128Value(number)
+                        } else {
+                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                            return Err(format!("Unknown number type at  [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                        }
+                        } else if self.char_match('3') && self.char_match('2') {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<u32>() {
                             Ok(num) => num,
@@ -619,26 +624,13 @@ impl<'s> Scanner<'s> {
                         };
                         LiteralValue::U32Value(number)
                         
-                    } else if self.current == '6' && self.char_match('4') {
-                        self.advance();
-
+                    } else if self.char_match('6') && self.char_match('4') {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<u64>() {
                             Ok(num) => num,
                             Err(_) => return Err(format!("To big value for type `u64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         };
                         LiteralValue::U64Value(number)
-                        
-                    } else if self.current == '1' && self.char_match('2') && self.char_match('8') {
-                        self.advance();
-                        self.advance();
-
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<u128>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::U128Value(number)
                         
                     } else {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
@@ -648,11 +640,8 @@ impl<'s> Scanner<'s> {
                         };
                         LiteralValue::USizeValue(number)
                     }
-                } else if self.current == 'f' || self.current == 'F' {
-                    self.advance();
-                    if self.current == '3' && self.char_match('2') {
-                        self.advance();
-
+                } else if self.char_match('f') || self.char_match('F') {
+                    if self.char_match('3') && self.char_match('2') {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<f32>() {
                             Ok(num) => num,
@@ -660,9 +649,7 @@ impl<'s> Scanner<'s> {
                         };
 
                         LiteralValue::F32Value(number)
-                    } else if self.current == '6' && self.char_match('4') {
-                        self.advance();
-
+                    } else if self.char_match('6') && self.char_match('4') {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         let number = match buffer.parse::<f64>() {
                             Ok(num) => num,
@@ -685,7 +672,7 @@ impl<'s> Scanner<'s> {
             }
         };
         
-        self.add_token_lit(TokenType::Number, Some(literal), (self.line, pos_start, self.get_pos()));
+        self.add_token_lit(Number, Some(literal), (self.line, pos_start, self.get_pos()));
         Ok(())
     }
 
@@ -702,15 +689,150 @@ impl<'s> Scanner<'s> {
         }
 
         let literal = {
-            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-            let number = match i128::from_str_radix(&buffer, 16) {
-                Ok(num) => num,
-                Err(_) => return Err(format!("To big value for the integer number [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-            };
-            LiteralValue::UndefinedIntValue(number)
+            if self.char_match('f') || self.char_match('F') {
+                if self.char_match('3') && self.char_match('2') {
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match i128::from_str_radix(&buffer, 16) {
+                        Ok(num) => num as f32,
+                        Err(_) => return Err(format!("To big value for type `f32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+
+                    LiteralValue::F32Value(number)
+                } else if self.char_match('6') && self.char_match('4') {                        
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match i128::from_str_radix(&buffer, 16) {
+                        Ok(num) => num as f64,
+                        Err(_) => return Err(format!("To big value for type `f64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+
+                    LiteralValue::F64Value(number)
+                } else {
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    return Err(format!("Unrecognized number type at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
+                }
+            } else if self.char_match('i') || self.char_match('I') {                    
+                if self.char_match('8') {
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match i8::from_str_radix(&buffer, 16) {
+                        Ok(num) => num,
+                        Err(_) => return Err(format!("To big value for type `i8` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+                    LiteralValue::I8Value(number)
+                    
+                } else if self.char_match('1') {
+                    if self.char_match('6') {
+                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                        let number = match i16::from_str_radix(&buffer, 16) {
+                            Ok(num) => num,
+                            Err(_) => return Err(format!("To big value for type `i16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                        };
+                        LiteralValue::I16Value(number)
+                        
+                    } else if self.char_match('2') && self.char_match('8') {
+                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                        let number = match i128::from_str_radix(&buffer, 16) {
+                            Ok(num) => num,
+                            Err(_) => return Err(format!("To big value for type `i128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                        };
+                        LiteralValue::I128Value(number)
+                    } else {
+                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                        return Err(format!("Unknown number type at  [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    }
+                    
+                } else if self.char_match('3') && self.char_match('2') {
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match i32::from_str_radix(&buffer, 16) {
+                        Ok(num) => num,
+                        Err(_) => return Err(format!("To big value for type `i32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+                    LiteralValue::I32Value(number)
+                    
+                } else if self.char_match('6') && self.char_match('4') {
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match i64::from_str_radix(&buffer, 16) {
+                        Ok(num) => num,
+                        Err(_) => return Err(format!("To big value for type `i64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+                    LiteralValue::I64Value(number)
+                    
+                } else {
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match isize::from_str_radix(&buffer, 16) {
+                        Ok(num) => num,
+                        Err(_) => return Err(format!("To big value for type `isize` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+                    LiteralValue::ISizeValue(number)
+
+                }
+            } else if self.char_match('u') || self.char_match('U') {
+               
+                if self.char_match('8') {
+                    self.advance();
+
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match u8::from_str_radix(&buffer, 16) {
+                        Ok(num) => num,
+                        Err(_) => return Err(format!("To big value for type `u8` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+                    LiteralValue::U8Value(number)
+                    
+                
+                } else if self.char_match('1') {
+                    if self.char_match('6') {
+                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                        let number = match u16::from_str_radix(&buffer, 16) {
+                            Ok(num) => num,
+                            Err(_) => return Err(format!("To big value for type `u16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                        };
+                        LiteralValue::U16Value(number)
+                        
+                    } else if self.char_match('2') && self.char_match('8') {
+                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                        let number = match u128::from_str_radix(&buffer, 16) {
+                            Ok(num) => num,
+                            Err(_) => return Err(format!("To big value for type `u128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                        };
+                        LiteralValue::U128Value(number)
+                    } else {
+                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                        return Err(format!("Unknown number type at  [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    }
+                    } else if self.char_match('3') && self.char_match('2') {
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match u32::from_str_radix(&buffer, 16) {
+                        Ok(num) => num,
+                        Err(_) => return Err(format!("To big value for type `u32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+                    LiteralValue::U32Value(number)
+                    
+                } else if self.char_match('6') && self.char_match('4') {
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match u64::from_str_radix(&buffer, 16) {
+                        Ok(num) => num,
+                        Err(_) => return Err(format!("To big value for type `u64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+                    LiteralValue::U64Value(number)
+                    
+                } else {
+                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                    let number = match usize::from_str_radix(&buffer, 16) {
+                        Ok(num) => num,
+                        Err(_) => return Err(format!("To big value for type `usize` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                    };
+                    LiteralValue::USizeValue(number)
+                }
+            } else {
+                let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
+                let number = match i128::from_str_radix(&buffer, 16) {
+                    Ok(num) => num,
+                    Err(_) => return Err(format!("To big value for the integer number [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
+                };
+                LiteralValue::UndefinedIntValue(number)
+            }
         };
 
-        self.add_token_lit(TokenType::Number, Some(literal), (self.line, pos_start, self.get_pos()));
+        self.add_token_lit(Number, Some(literal), (self.line, pos_start, self.get_pos()));
         Ok(())
     }
     
@@ -741,10 +863,6 @@ impl<'s> Scanner<'s> {
 
     fn is_at_end(&self) -> bool {
         self.current_pos >= self.src.len()
-    }
-    
-    fn relative_pos_is_at_end(&self, relative: usize) -> bool {
-        self.current_pos + relative >= self.src.len()
     }
 
     fn get_lexeme(&self, possition: Possition) -> String {
