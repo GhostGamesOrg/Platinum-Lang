@@ -173,7 +173,7 @@ fn eval_binary4_expr() {
 #[test]
 fn eval_binary5_expr() {
     let file_path = "<stdin>";
-    let src = "((0x214i + 0x214i) * 20 == 6000) == !!false";
+    let src = "((0x214i + 0x214i) * 20 == 6000) == !!!!false";
 
     let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
