@@ -1,61 +1,16 @@
 use std::{self, fs};
 
 use interpriter::lexer::lexer::Scanner;
-use interpriter::lexer::token::{Token, TokenType, LiteralValue};
-use interpriter::parser::{expr::Expr, parser::Parser};
+use interpriter::lexer::token::{Token, TokenType, NumberType};
+use interpriter::parser::{expr::Expression, parser::Parser};
 
 fn read_file(path: &str) -> Result<String, Box<dyn std::error::Error>> {
     let src: String = fs::read_to_string(path)?.parse()?;
     Ok(src)
 }
 
-
 #[test]
-fn pretty_print_ast() {
-    let minus_token = Token::new(TokenType::Minus, "-".to_string(), None, (1, 2, 10));
-
-    let left = Box::from(Expr::Literal { value: LiteralValue::I128Value(0xfff) });
-    let right = Box::from(Expr::Literal { value: LiteralValue::U8Value(0xff) });
-
-    let ast = Expr::Binary { left: left, operator: minus_token, right: right };
-    assert_eq!("((4095i128) - (255u8))", ast.to_string());
-}
-
-#[test]
-fn pretty_print2_ast() {
-    let file_path = "<stdin>";
-    let src = "4095i128 - 255u8";
-
-    let mut scanner = Scanner::new(file_path, src);
-    let _ = scanner.scan_tokens();
-    let mut parser = Parser::new(file_path, scanner.tokens);
-
-    let minus_token = Token::new(TokenType::Minus, "-".to_string(), None, (1, 9, 10));
-    let left = Box::from(Expr::Literal { value: LiteralValue::I128Value(0xfff) });
-    let right = Box::from(Expr::Literal { value: LiteralValue::U8Value(0xff) });
-    let expr = Expr::Binary { left: left, operator: minus_token, right: right };
-
-    let ast = parser.parse().unwrap();
-    assert_eq!("((4095i128) - (255u8))", ast.to_string());
-    assert_eq!(expr, ast);
-}
-
-#[test]
-fn simple_parse_expr() {
-    let file_path = "<stdin>";
-    let src = "(1 + (1 * 123)) / 213";
-
-    let mut scanner = Scanner::new(file_path, src);
-    let _ = scanner.scan_tokens();
-
-    let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!("((group ((1) + (group ((1) * (123))))) / (213))", expr.to_string());
-}
-
-#[test]
-fn parse_binary_expr() {
+fn parse_expr() {
     let file_path = "<stdin>";
     let src = "(38u8 + 24) - 95i16";
 
@@ -63,123 +18,52 @@ fn parse_binary_expr() {
     let _ = scanner.scan_tokens();
 
     let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!("((group ((38u8) + (24))) - (95i16))", expr.to_string());
-}
-
-#[test]
-fn parse_equality_expr() {
-    let file_path = "<stdin>";
-    let src = "(38u8 != 95i16) == (11u8 == 11u16)";
-
-    let mut scanner = Scanner::new(file_path, src);
-    let _ = scanner.scan_tokens();
-
-    let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!("((group ((38u8) != (95i16))) == (group ((11u8) == (11u16))))", expr.to_string());
-}
-
-#[test]
-fn parse_equality_binary_expr() {
-    let file_path = "<stdin>";
-    let src = "38u128 + 95u16 != 11u8 - 11u16";
-
-    let mut scanner = Scanner::new(file_path, src);
-    let _ = scanner.scan_tokens();
-
-    let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!("(((38u128) + (95u16)) != ((11u8) - (11u16)))", expr.to_string());
-}
-
-#[test]
-fn eval_literal_expr() {
-    let file_path = "<stdin>";
-    let src = "100";
-
-    let mut scanner = Scanner::new(file_path, src);
-    let _ = scanner.scan_tokens();
-
-    let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!(LiteralValue::UndefinedIntValue(100), expr.evaluate());
-}
-
-#[test]
-fn eval_binary_expr() {
-    let file_path = "<stdin>";
-    let src = "11 * 20";
-
-    let mut scanner = Scanner::new(file_path, src);
-    let _ = scanner.scan_tokens();
-
-    let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!(LiteralValue::UndefinedIntValue(220), expr.evaluate());
-}
-
-#[test]
-fn eval_binary2_expr() {
-    let file_path = "<stdin>";
-    let src = "(100 + 200) * 20";
-
-    let mut scanner = Scanner::new(file_path, src);
-    let _ = scanner.scan_tokens();
-
-    let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!(LiteralValue::UndefinedIntValue(6000), expr.evaluate());
-}
-
-#[test]
-fn eval_binary3_expr() {
-    let file_path = "<stdin>";
-    let src = "(100 + 200) * 20 == 6000";
-
-    let mut scanner = Scanner::new(file_path, src);
-    let _ = scanner.scan_tokens();
-
-    let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!(LiteralValue::Bool(true), expr.evaluate());
-}
-
-#[test]
-fn eval_binary4_expr() {
-    let file_path = "<stdin>";
-    let src = "((100i + 14i) * 20 == 6000) == false";
-
-    let mut scanner = Scanner::new(file_path, src);
-    let _ = scanner.scan_tokens();
-
-    for token in scanner.tokens.iter() {
-        println!("{:?}", token);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
     }
 
-    let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!(LiteralValue::Bool(true), expr.evaluate());
+    assert_eq!("(assigment (- (group (+ 38u8 24)) 95i16))", statements[0].to_string());
 }
 
 #[test]
-fn eval_binary5_expr() {
+fn parse_block_stmt() {
+    let file_path = "tests\\parser_codes\\parse_block_stmt.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+    println!("{:?}", statements[0]);
+    assert_eq!("(block \n(assigment (+ 95 213))\n(assigment (+ 11 (* 51 2)))\n(assigment (ternary (>= (group (* 25 13)) 1254) ? 51 : 15))\n)", statements[0].to_string());
+}
+
+#[test]
+fn test_parse_optimize() {
     let file_path = "<stdin>";
-    let src = "((0x214i + 0x214i) * 20 == 6000) == !!!!false";
+    let src = "\"d\" + \"d\" + (\"d\")";
 
     let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
     let mut parser = Parser::new(file_path, scanner.tokens);
-    let expr = parser.parse().unwrap();
-
-    assert_eq!(LiteralValue::Bool(true), expr.evaluate());
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+    
+    assert_eq!("(assigment ddd)", statements[0].to_string());
 }

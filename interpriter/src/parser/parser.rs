@@ -1,6 +1,6 @@
 use crate::lexer::token::{Token, TokenType, TokenType::*};
 
-use super::expr::Expr;
+use super::{expr::Expression, stmt::Statement};
 
 pub struct Parser {
     file_path: String,
@@ -17,136 +17,326 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, String> {
-        self.expression()
-    }
-
-    fn expression(&mut self) -> Result<Expr, String> {
-        self.equality()
-    }
-
-    fn equality(&mut self) -> Result<Expr, String> {
-        let mut expr = self.comparison()?;
-        while self.match_tokens(vec![BangEqual, EqualEqual]) {
-            let operator = self.previous();
-            let right = self.comparison()?;
-            expr = Expr::Binary {
-                left: Box::from(expr),
-                operator: operator,
-                right: Box::from(right)
-            };
-        }
-
-        Ok(expr)
-    }
-
-    fn comparison(&mut self) -> Result<Expr, String> {
-        let mut expr = self.term()?;
+    pub fn parse(&mut self) -> Result<Vec<Statement>, String> {
+        let mut stmts = vec![];
+        let mut errors = vec![];
         
-        while self.match_tokens(
-            vec![
-                Greater,
-                GreaterEqual,
-                Less,
-                LessEqual
-                ]
-            ) {
-            let operator = self.previous();
-            let right = self.term()?;
-            expr = Expr::Binary {
-                left: Box::from(expr),
-                operator: operator,
-                right: Box::from(right)
+        while !self.is_at_end() {
+            match self.statement() {
+                Ok(stmt) => stmts.push(stmt),
+                Err(msg) => {
+                    errors.push(msg);
+                    self.synchronize();
+                }
+
             }
+            self.advance();
         }
 
-        Ok(expr)
+        if errors.len() > 0 {
+            let mut joined = "".to_string();
+            for msg in errors.iter() {
+                joined.push_str(&msg);
+                joined.push_str("\n");
+            }
+            return Err(joined);
+        }
+        Ok(stmts)
     }
 
-    fn term(&mut self) -> Result<Expr, String> {
-        let mut expr = self.factor()?;
-        while self.match_tokens(vec![Minus, Plus]) {
-            let operator = self.previous();
-            let right = self.factor()?;
-            expr = Expr::Binary {
-                left: Box::from(expr),
-                operator: operator,
+
+    fn statement(&mut self) -> Result<Statement, String> {
+        if self.match_token(LeftCurBrace) {
+            return self.block_statement();
+        }
+        if self.match_token(Fun) {
+            return self.func_statement(); // todo
+        }
+        if self.match_token(For) {
+            return self.for_statement(); // todo
+        }
+        if self.match_token(While) {
+            return self.while_statement(); // todo
+        }
+        if self.match_token(DoWhile) {
+            return self.do_while_statement(); // todo
+        }
+        if self.match_token(Loop) {
+            return self.loop_statement(); // todo
+        }
+        self.assigment_statement()
+    }
+
+    fn assigment_statement(&mut self) -> Result<Statement, String> {
+        let expression = self.expression()?;
+        Ok(Statement::Assigment { expression: expression })
+    }
+
+    fn block_statement(&mut self) -> Result<Statement, String> {
+        let mut statements = Vec::new();
+        self.consume(LeftCurBrace, "`}` expected");
+        while !self.match_token(RightCurBrace) {
+            statements.push(self.statement()?);
+        }
+        Ok(Statement::Block { statements: statements })
+    }
+    
+    fn func_statement(&mut self) -> Result<Statement, String> {
+        todo!()
+        // self.consume(Fun, "Key `fun` expected");
+        // let name = self.consume(Identifier { value: String::new() }, "Identifier expected, for function declaration.")?;
+    }
+
+    fn for_statement(&mut self) -> Result<Statement, String> {
+        todo!()
+    }
+
+    fn while_statement(&mut self) -> Result<Statement, String> {
+        todo!()
+    }
+
+    fn do_while_statement(&mut self) -> Result<Statement, String> {
+        todo!()
+    }
+
+    fn loop_statement(&mut self) -> Result<Statement, String> {
+        todo!()
+    }
+
+
+    fn expression(&mut self) -> Result<Expression, String> {
+        self.assigment()?.optimize_expression()
+    }
+    
+    fn assigment(&mut self) -> Result<Expression, String> {
+
+        self.ternary()
+    }
+
+    fn ternary(&mut self) -> Result<Expression, String> {
+        let mut result: Expression = self.null_coalesce()?;
+        if self.match_token(Question) {
+            let true_expression = self.expression()?;
+
+            self.consume(Colon, "`:` expected after left result");
+            let false_expression = self.expression()?;
+            
+            result = Expression::Ternary {
+                result: Box::from(result),
+                true_expression: Box::from(true_expression),
+                false_expression: Box::from(false_expression)
+            };
+        }
+        Ok(result)
+    }
+
+    fn null_coalesce(&mut self) -> Result<Expression, String> {
+        let mut result: Expression = self.logical_or()?;
+        while self.match_token(QuestionQuestion) {
+            let op = self.previous();
+            let right = self.logical_or()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
                 right: Box::from(right)
             };
         }
-        Ok(expr)
+        Ok(result)
     }
 
-    fn factor(&mut self) -> Result<Expr, String> {
-        let mut expr = self.unary()?;
-        while self.match_tokens(vec![Slash, Star]) {
-            let operator = self.previous();
-            let right = self.factor()?;
-            expr = Expr::Binary {
-                left: Box::from(expr),
-                operator: operator,
+    fn logical_or(&mut self) -> Result<Expression, String> {
+        let mut result = self.logical_and()?;
+        while self.match_token(Or) {
+            let op = self.previous();
+            let right = self.logical_and()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
                 right: Box::from(right)
             };
         }
-        Ok(expr)
+        Ok(result)
     }
 
-    fn unary(&mut self) -> Result<Expr, String> {
-        if self.match_tokens(vec![Bang, Minus]) {
-            let operator = self.previous();
+    fn logical_and(&mut self) -> Result<Expression, String> {
+        let mut result = self.bitwise_or()?;
+        while self.match_token(And) {
+            let op = self.previous();
+            let right = self.bitwise_or()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
+                right: Box::from(right)
+            };
+        }
+        Ok(result)
+    }
+
+    fn bitwise_or(&mut self) -> Result<Expression, String> {
+        let mut result = self.bitwise_xor()?;
+        while self.match_token(Bar) {
+            let op = self.previous();
+            let right = self.bitwise_xor()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
+                right: Box::from(right)
+            };
+        }
+        Ok(result)
+    }
+
+    fn bitwise_xor(&mut self) -> Result<Expression, String> {
+        let mut result = self.bitwise_and()?;
+        while self.match_token(Caret) {
+            let op = self.previous();
+            let right = self.bitwise_and()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
+                right: Box::from(right)
+            };
+        }
+        Ok(result)
+    }
+
+    fn bitwise_and(&mut self) -> Result<Expression, String> {
+        let mut result = self.equalty()?;
+        while self.match_token(Ampersant) {
+            let op = self.previous();
+            let right = self.equalty()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
+                right: Box::from(right)
+            };
+        }
+        Ok(result)
+    }
+
+    fn equalty(&mut self) -> Result<Expression, String> {
+        let mut result = self.comparison()?;
+        while self.match_tokens(vec![EqualEqual, BangEqual]) {
+            let op = self.previous();
+            let right = self.comparison()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
+                right: Box::from(right)
+            };
+        }
+        Ok(result)
+    }
+
+    fn comparison(&mut self) -> Result<Expression, String> {
+        let mut result = self.shift()?;
+        while self.match_tokens(vec![LessEqual, Less, GreaterEqual, Greater]) {
+            let op = self.previous();
+            let right = self.shift()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
+                right: Box::from(right)
+            };
+        }
+        Ok(result)
+    }
+
+    fn shift(&mut self) -> Result<Expression, String> {
+        let mut result = self.term()?;
+        while self.match_tokens(vec![LessLess, GreaterGreater, GreaterGreaterGreater]) {
+            let op = self.previous();
+            let right = self.term()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
+                right: Box::from(right)
+            };
+        }
+        Ok(result)
+    }
+
+    fn term(&mut self) -> Result<Expression, String> {
+        let mut result = self.factor()?;
+        while self.match_tokens(vec![Plus, Minus]) {
+            let op = self.previous();
+            let right = self.factor()?;
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
+                right: Box::from(right)
+            };
+        }
+        Ok(result)
+    }
+
+    fn factor(&mut self) -> Result<Expression, String> {
+        let mut result = self.unary()?;
+        while self.match_tokens(vec![Star, Slash]) {
+            let op = self.previous();
             let right = self.unary()?;
-            Ok(Expr::Unary { operator: operator, right: Box::from(right) })
+            result = Expression::Binary {
+                left: Box::from(result),
+                operator: op,
+                right: Box::from(right)
+            };
+        }
+        Ok(result)
+    }
+
+    fn unary(&mut self) -> Result<Expression, String> {
+        if self.match_tokens(vec![Bang, Minus]) {
+            let op = self.previous();
+            let right = self.unary()?;
+            Ok(Expression::Unary {
+                operator: op,
+                right: Box::from(right),
+            })
         } else {
             self.primary()
         }
     }
-
-    fn primary(&mut self) -> Result<Expr, String> {
+    
+    fn primary(&mut self) -> Result<Expression, String> {
         let token = self.peek();
-
-        let result: Expr;
+        let result;
         match token.token_type {
             LeftParen => {
                 self.advance();
                 let expr = self.expression()?;
                 self.consume(RightParen, "Expected ')'")?;
-                result = Expr::Grouping { expression: Box::from(expr) }
+                result = Expression::Grouping {
+                    expression: Box::from(expr),
+                };
             }
-            Number | Char | StringT | BoolT | Null => {
+            Int {..} | Float {..} | StringT {..} | BoolT {..} | Char {..} => {
                 self.advance();
-                result = Expr::Literal { value: token.literal.unwrap() }
-            },
-            _ => return Err("".to_string()),
+                result = Expression::Literal {
+                    value: token,
+                }
+            }
+            _ => return Err(format!("Expected expression: {:?}", token)),
         }
 
         Ok(result)
-
-        // if self.match_token(LeftParen) {
-        //     let expr = self.expression()?;
-        //     self.consume(RightParen, "Expected ')'")?;
-        //     Ok(Expr::Grouping { expression: Box::from(expr) })
-        // } else {
-        //     let token = self.peek();
-        //     self.advance();
-        //     Ok(Expr::Literal { value: token.literal.unwrap() })
-        // }
     }
 
-    fn consume(&mut self, token_type: TokenType, msg: &str) -> Result<(), String> {
+
+    fn consume(&mut self, token_type: TokenType, msg: &str) -> Result<Token, String> {
         let token = self.peek();
-        if token.token_type == token_type {
+        if token.token_type.eq_token(token_type) {
             self.advance();
+            Ok(token)
         } else {
             return Err(msg.to_string());
         }
-        Ok(())
     }
 
     fn match_token(&mut self, token_type: TokenType) -> bool {
         if self.is_at_end() {
             false
         } else {
-            if self.peek().token_type == token_type {
+            if self.peek().token_type.eq_token(token_type) {
                 self.advance();
                 true
             } else {

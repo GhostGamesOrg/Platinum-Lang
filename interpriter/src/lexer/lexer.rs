@@ -45,8 +45,22 @@ fn str_to_keyword(string: &str) -> Option<TokenType> {
         "break" => Some(Break),
         "continue" => Some(Continue),
         "let" => Some(Let),
+        "mut" => Some(Mut),
+
+
+        "DBG" => Some(DBG),
         _ => None
     }
+}
+
+fn hex_to_decimal(hex_string: &str) -> Result<String, std::num::ParseIntError> {
+    // Parse the hexadecimal string into an integer
+    let hex_int = u128::from_str_radix(hex_string, 16)?;
+
+    // Convert the integer to a decimal string
+    let decimal_string = hex_int.to_string();
+
+    Ok(decimal_string)
 }
 
 pub struct Scanner<'s> {
@@ -134,9 +148,17 @@ impl<'s> Scanner<'s> {
                         MinusEqual
                     } else if self.char_match('-') {
                         MinusMinus
+                    } else if self.char_match('>') {
+                        MinusGreater
                     } else {
                         Minus
                     }
+                };
+                self.add_token(token, (self.line, pos_start, self.get_pos()));
+            }
+            '^' => {
+                let token = {
+                    Caret
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
             }
@@ -322,29 +344,33 @@ impl<'s> Scanner<'s> {
 
         let mut buffer = String::new();
         
-        while is_idetifier_char(self.current) {
+        loop {
             buffer.push(self.current);
 
             if self.is_at_end() {
                 break;
             }
 
-            self.advance();
+            if is_idetifier_char(self.next) {
+                self.advance();
+            } else {
+                break;
+            }
         }
         
         if buffer == "true".to_string() {
-            self.add_token_lit(BoolT, Some(LiteralValue::Bool(true)), (self.line, pos_start, self.get_pos()));
+            self.add_token(BoolT { value: true }, (self.line, pos_start, self.get_pos()));
         } else if buffer == "false".to_string() {
-            self.add_token_lit(BoolT, Some(LiteralValue::Bool(false)), (self.line, pos_start, self.get_pos()));
+            self.add_token(BoolT { value: false }, (self.line, pos_start, self.get_pos()));
         } else if buffer == "null".to_string() {
-            self.add_token_lit(Null, Some(LiteralValue::NullLiteral(false)), (self.line, pos_start, self.get_pos()));
+            self.add_token(Null, (self.line, pos_start, self.get_pos()));
         } else {
             match str_to_keyword(&buffer) {
                 Some(token_type) => {
                     self.add_token(token_type, (self.line, pos_start, self.get_pos()));
                 }
                 _ => {
-                    self.add_token_lit(Identifier, Some(LiteralValue::IdentifierValue(buffer)), (self.line, pos_start, self.get_pos()));
+                    self.add_token(Identifier { value: buffer }, (self.line, pos_start, self.get_pos()));
                 }
             }
         }
@@ -401,7 +427,7 @@ impl<'s> Scanner<'s> {
             return Err(format!("Unterminated string at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
         }
 
-        self.add_token_lit(StringT, Some(LiteralValue::StringValue(buffer)), (self.line, pos_start, self.get_pos()));
+        self.add_token(StringT { value: buffer }, (self.line, pos_start, self.get_pos()));
 
         Ok(())
     }
@@ -456,7 +482,7 @@ impl<'s> Scanner<'s> {
             return Err(format!("Unterminated char at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
         }
 
-        self.add_token_lit(Char, Some(LiteralValue::CharValue(result)), (self.line, pos_start, self.get_pos()));
+        self.add_token(Char { value: result }, (self.line, pos_start, self.get_pos()));
 
         Ok(())
     }
@@ -495,184 +521,96 @@ impl<'s> Scanner<'s> {
             }
         }
 
-        let literal = {
+        let num_type = {
             if with_dot {
                 if self.char_match('f') || self.char_match('F') {
                     if self.char_match('3') && self.char_match('2') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<f32>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `f32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
+                        NumberType::F32
 
-                        LiteralValue::F32Value(number)
-                    } else if self.char_match('6') && self.char_match('4') {                        
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<f64>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `f64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
+                    } else if self.char_match('6') && self.char_match('4') {
+                        NumberType::F64
 
-                        LiteralValue::F64Value(number)
                     } else {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         return Err(format!("Unrecognized number type at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
                     }
                 } else {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match buffer.parse::<f64>() {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for the float [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    
-                    LiteralValue::UndefinedFloatValue(number)
+                    NumberType::UntypedFloat
                 }
             } else {
                 if self.char_match('i') || self.char_match('I') {                    
                     if self.char_match('8') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<i8>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i8` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::I8Value(number)
+                        NumberType::I8
                         
                     } else if self.char_match('1') {
                         if self.char_match('6') {
-                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                            let number = match buffer.parse::<i16>() {
-                                Ok(num) => num,
-                                Err(_) => return Err(format!("To big value for type `i16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                            };
-                            LiteralValue::I16Value(number)
+                            NumberType::I16
                             
                         } else if self.char_match('2') && self.char_match('8') {
-                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                            let number = match buffer.parse::<i128>() {
-                                Ok(num) => num,
-                                Err(_) => return Err(format!("To big value for type `i128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                            };
-                            LiteralValue::I128Value(number)
+                            NumberType::I128
+
                         } else {
                             let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                             return Err(format!("Unknown number type at  [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         }
                         
                     } else if self.char_match('3') && self.char_match('2') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<i32>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::I32Value(number)
+                        NumberType::I32
                         
                     } else if self.char_match('6') && self.char_match('4') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<i64>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::I64Value(number)
+                        NumberType::I64
                         
                     } else {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<isize>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `isize` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::ISizeValue(number)
+                        NumberType::ISize
 
                     }
                 } else if self.char_match('u') || self.char_match('U') {
-                   
-                    if self.char_match('8') {
-                        self.advance();
 
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<u8>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u8` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::U8Value(number)
-                        
-                    
+                    if self.char_match('8') {
+                        NumberType::U8
+
                     } else if self.char_match('1') {
                         if self.char_match('6') {
-                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                            let number = match buffer.parse::<u16>() {
-                                Ok(num) => num,
-                                Err(_) => return Err(format!("To big value for type `u16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                            };
-                            LiteralValue::U16Value(number)
-                            
+                            NumberType::U16
+
                         } else if self.char_match('2') && self.char_match('8') {
-                            let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                            let number = match buffer.parse::<u128>() {
-                                Ok(num) => num,
-                                Err(_) => return Err(format!("To big value for type `u128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                            };
-                            LiteralValue::U128Value(number)
+                            NumberType::U128
+
                         } else {
                             let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                             return Err(format!("Unknown number type at  [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                         }
                         } else if self.char_match('3') && self.char_match('2') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<u32>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::U32Value(number)
-                        
+                            NumberType::U32
+
                     } else if self.char_match('6') && self.char_match('4') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<u64>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::U64Value(number)
-                        
+                        NumberType::U64
+
                     } else {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<usize>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `usize` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::USizeValue(number)
+                        NumberType::USize
+
                     }
                 } else if self.char_match('f') || self.char_match('F') {
                     if self.char_match('3') && self.char_match('2') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<f32>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `f32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
+                        NumberType::F32
 
-                        LiteralValue::F32Value(number)
                     } else if self.char_match('6') && self.char_match('4') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match buffer.parse::<f64>() {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `f64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
+                        NumberType::F64
 
-                        LiteralValue::F64Value(number)
                     } else {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         return Err(format!("Unrecognized number type at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
                     }
                 } else {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match buffer.parse::<i128>() {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for the integer number [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    LiteralValue::UndefinedIntValue(number)
+                    NumberType::UntypedInt
                 }
             }
         };
-        
-        self.add_token_lit(Number, Some(literal), (self.line, pos_start, self.get_pos()));
+        if num_type == NumberType::F32 || num_type == NumberType::F64 || num_type == NumberType::UntypedFloat {
+            self.add_token(Float { value: buffer, num_type: num_type }, (self.line, pos_start, self.get_pos()));
+        } else {
+            self.add_token(Int { value: buffer, num_type: num_type }, (self.line, pos_start, self.get_pos()));
+        }
         Ok(())
     }
 
@@ -681,158 +619,91 @@ impl<'s> Scanner<'s> {
 
         let mut buffer = String::new();
 
-        self.advance();
-
-        while is_hex(self.current) {
-            buffer.push(self.current);
+        while is_hex(self.next) {
             self.advance();
+            buffer.push(self.current);
         }
 
-        let literal = {
-            if self.char_match('f') || self.char_match('F') {
-                if self.char_match('3') && self.char_match('2') {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match i128::from_str_radix(&buffer, 16) {
-                        Ok(num) => num as f32,
-                        Err(_) => return Err(format!("To big value for type `f32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-
-                    LiteralValue::F32Value(number)
-                } else if self.char_match('6') && self.char_match('4') {                        
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match i128::from_str_radix(&buffer, 16) {
-                        Ok(num) => num as f64,
-                        Err(_) => return Err(format!("To big value for type `f64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-
-                    LiteralValue::F64Value(number)
-                } else {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    return Err(format!("Unrecognized number type at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
-                }
-            } else if self.char_match('i') || self.char_match('I') {                    
+        let result = {
+            match hex_to_decimal(&buffer) {
+                Ok(res) => res,
+                Err(msg) => return Err(msg.to_string())
+            }
+        };
+        
+        let num_type = {
+            if self.char_match('i') || self.char_match('I') {                    
                 if self.char_match('8') {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match i8::from_str_radix(&buffer, 16) {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for type `i8` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    LiteralValue::I8Value(number)
+                    NumberType::I8
                     
                 } else if self.char_match('1') {
                     if self.char_match('6') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match i16::from_str_radix(&buffer, 16) {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::I16Value(number)
+                        NumberType::I16
                         
                     } else if self.char_match('2') && self.char_match('8') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match i128::from_str_radix(&buffer, 16) {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `i128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::I128Value(number)
+                        NumberType::I128
+
                     } else {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         return Err(format!("Unknown number type at  [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                     }
                     
                 } else if self.char_match('3') && self.char_match('2') {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match i32::from_str_radix(&buffer, 16) {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for type `i32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    LiteralValue::I32Value(number)
+                    NumberType::I32
                     
                 } else if self.char_match('6') && self.char_match('4') {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match i64::from_str_radix(&buffer, 16) {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for type `i64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    LiteralValue::I64Value(number)
+                    NumberType::I64
                     
                 } else {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match isize::from_str_radix(&buffer, 16) {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for type `isize` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    LiteralValue::ISizeValue(number)
+                    NumberType::ISize
 
                 }
             } else if self.char_match('u') || self.char_match('U') {
-               
-                if self.char_match('8') {
-                    self.advance();
 
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match u8::from_str_radix(&buffer, 16) {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for type `u8` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    LiteralValue::U8Value(number)
-                    
-                
+                if self.char_match('8') {
+                    NumberType::U8
+
                 } else if self.char_match('1') {
                     if self.char_match('6') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match u16::from_str_radix(&buffer, 16) {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u16` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::U16Value(number)
-                        
+                        NumberType::U16
+
                     } else if self.char_match('2') && self.char_match('8') {
-                        let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                        let number = match u128::from_str_radix(&buffer, 16) {
-                            Ok(num) => num,
-                            Err(_) => return Err(format!("To big value for type `u128` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                        };
-                        LiteralValue::U128Value(number)
+                        NumberType::U128
+
                     } else {
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
                         return Err(format!("Unknown number type at  [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
                     }
                     } else if self.char_match('3') && self.char_match('2') {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match u32::from_str_radix(&buffer, 16) {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for type `u32` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    LiteralValue::U32Value(number)
-                    
+                        NumberType::U32
+
                 } else if self.char_match('6') && self.char_match('4') {
-                    let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match u64::from_str_radix(&buffer, 16) {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for type `u64` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    LiteralValue::U64Value(number)
-                    
+                    NumberType::U64
+
+                } else {
+                    NumberType::USize
+
+                }
+            } else if self.char_match('f') || self.char_match('F') {
+                if self.char_match('3') && self.char_match('2') {
+                    NumberType::F32
+
+                } else if self.char_match('6') && self.char_match('4') {
+                    NumberType::F64
+
                 } else {
                     let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                    let number = match usize::from_str_radix(&buffer, 16) {
-                        Ok(num) => num,
-                        Err(_) => return Err(format!("To big value for type `usize` [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                    };
-                    LiteralValue::USizeValue(number)
+                    return Err(format!("Unrecognized number type at possition [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme));
                 }
             } else {
-                let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
-                let number = match i128::from_str_radix(&buffer, 16) {
-                    Ok(num) => num,
-                    Err(_) => return Err(format!("To big value for the integer number [{}:{}:{}]: {}", self.file_path, self.line, self.col, lexeme))
-                };
-                LiteralValue::UndefinedIntValue(number)
+                NumberType::UntypedInt
             }
         };
-
-        self.add_token_lit(Number, Some(literal), (self.line, pos_start, self.get_pos()));
+        if num_type == NumberType::F32 || num_type == NumberType::F64 || num_type == NumberType::UntypedFloat {
+            self.add_token(Float { value: result, num_type: num_type }, (self.line, pos_start, self.get_pos()));
+        } else {
+            self.add_token(Int { value: result, num_type: num_type }, (self.line, pos_start, self.get_pos()));
+        }
         Ok(())
     }
     
@@ -872,11 +743,7 @@ impl<'s> Scanner<'s> {
     }
 
     fn add_token(&mut self, token_type: TokenType, possition: Possition) {
-        self.add_token_lit(token_type, None, possition);
-    }
-
-    fn add_token_lit(&mut self, token_type: TokenType, literal: Option<LiteralValue>, possition: Possition) {
         let lexeme = self.get_lexeme(possition);
-        self.tokens.push(Token::new(token_type, lexeme, literal, possition));
+        self.tokens.push(Token::new(token_type, lexeme, possition));
     }
 }

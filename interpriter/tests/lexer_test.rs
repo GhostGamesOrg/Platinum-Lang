@@ -1,6 +1,6 @@
 use std::{self, fs};
 
-use interpriter::lexer::{lexer::*, token::{TokenType::*, LiteralValue}};
+use interpriter::lexer::{lexer::*, token::{NumberType, TokenType::{self, *}}};
 
 
 fn read_file(path: &str) -> Result<String, Box<dyn std::error::Error>> {
@@ -123,9 +123,8 @@ fn handle_string_tokens() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::StringValue("Hello".to_string())));
     assert_eq!(scanner.tokens[0].lexeme, "\"Hello\"".to_string());
-    assert_eq!(scanner.tokens[0].token_type, StringT);
+    assert_eq!(scanner.tokens[0].token_type, StringT { value: "Hello".to_string() });
     assert_eq!(scanner.tokens[1].token_type, EOF);
 }
 
@@ -163,9 +162,8 @@ fn handle_char_tokens() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::CharValue('A')));
     assert_eq!(scanner.tokens[0].lexeme, "'A'".to_string());
-    assert_eq!(scanner.tokens[0].token_type, Char);
+    assert_eq!(scanner.tokens[0].token_type, Char { value: 'A' });
     assert_eq!(scanner.tokens[1].token_type, EOF);
 }
 
@@ -178,10 +176,6 @@ fn handle_special_chars_tokens() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 9);
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::CharValue('A')));
-    assert_eq!(scanner.tokens[2].literal, Some(LiteralValue::CharValue('\t')));
-    assert_eq!(scanner.tokens[4].literal, Some(LiteralValue::CharValue('\n')));
-    assert_eq!(scanner.tokens[6].literal, Some(LiteralValue::CharValue('Ф')));
 
     assert_eq!(scanner.tokens[0].lexeme, "'A'".to_string());
     assert_eq!(scanner.tokens[1].lexeme, "// Тут будет просто 'A'".to_string());
@@ -192,13 +186,13 @@ fn handle_special_chars_tokens() {
     assert_eq!(scanner.tokens[6].lexeme, "'Ф'".to_string());
     assert_eq!(scanner.tokens[7].lexeme, "// Тут будет просто 'Ф'".to_string());
 
-    assert_eq!(scanner.tokens[0].token_type, Char);
+    assert_eq!(scanner.tokens[0].token_type, Char { value: 'A' });
     assert_eq!(scanner.tokens[1].token_type, Coment);
-    assert_eq!(scanner.tokens[2].token_type, Char);
+    assert_eq!(scanner.tokens[2].token_type, Char { value: '\t' });
     assert_eq!(scanner.tokens[3].token_type, Coment);
-    assert_eq!(scanner.tokens[4].token_type, Char);
+    assert_eq!(scanner.tokens[4].token_type, Char { value: '\n' });
     assert_eq!(scanner.tokens[5].token_type, Coment);
-    assert_eq!(scanner.tokens[6].token_type, Char);
+    assert_eq!(scanner.tokens[6].token_type, Char { value: 'Ф' });
     assert_eq!(scanner.tokens[7].token_type, Coment);
     assert_eq!(scanner.tokens[8].token_type, EOF);
 }
@@ -237,7 +231,7 @@ fn handle_number_token() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::UndefinedIntValue(100)));
+    assert_eq!(scanner.tokens[0].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::UntypedInt });
     assert_eq!(scanner.tokens[1].token_type, EOF);
 }
 
@@ -249,7 +243,7 @@ fn handle_number_with_underscore_token() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::UndefinedIntValue(1_000_000)));
+    assert_eq!(scanner.tokens[0].token_type, TokenType::Int { value: "1000000".to_string(), num_type: NumberType::UntypedInt });
     assert_eq!(scanner.tokens[1].token_type, EOF);
 }
 
@@ -284,29 +278,25 @@ fn handle_numbers_tokens() {
     assert_eq!(scanner.tokens[16].lexeme, "100u128".to_string());
     assert_eq!(scanner.tokens[17].lexeme, "100u".to_string());
 
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::UndefinedIntValue(100)));
-    assert_eq!(scanner.tokens[1].literal, Some(LiteralValue::UndefinedFloatValue(100.0)));
-    assert_eq!(scanner.tokens[2].literal, Some(LiteralValue::F32Value(100.0)));
-    assert_eq!(scanner.tokens[3].literal, Some(LiteralValue::F64Value(100.0)));
-    assert_eq!(scanner.tokens[4].literal, Some(LiteralValue::F32Value(100.0)));
-    assert_eq!(scanner.tokens[5].literal, Some(LiteralValue::F64Value(100.0)));
-    assert_eq!(scanner.tokens[6].literal, Some(LiteralValue::I8Value(100)));
-    assert_eq!(scanner.tokens[7].literal, Some(LiteralValue::I16Value(100)));
-    assert_eq!(scanner.tokens[8].literal, Some(LiteralValue::I32Value(100)));
-    assert_eq!(scanner.tokens[9].literal, Some(LiteralValue::I64Value(100)));
-    assert_eq!(scanner.tokens[10].literal, Some(LiteralValue::I128Value(100)));
-    assert_eq!(scanner.tokens[11].literal, Some(LiteralValue::ISizeValue(100)));
-    assert_eq!(scanner.tokens[12].literal, Some(LiteralValue::U8Value(100)));
-    assert_eq!(scanner.tokens[13].literal, Some(LiteralValue::U16Value(100)));
-    assert_eq!(scanner.tokens[14].literal, Some(LiteralValue::U32Value(100)));
-    assert_eq!(scanner.tokens[15].literal, Some(LiteralValue::U64Value(100)));
-    assert_eq!(scanner.tokens[16].literal, Some(LiteralValue::U128Value(100)));
-    assert_eq!(scanner.tokens[17].literal, Some(LiteralValue::USizeValue(100)));
-    
-    for i in 0..18 {
-        assert_eq!(scanner.tokens[i].token_type, Number);
-    }
-    
+    assert_eq!(scanner.tokens[0].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::UntypedInt });
+    assert_eq!(scanner.tokens[1].token_type, TokenType::Float { value: "100.0".to_string(), num_type: NumberType::UntypedFloat });
+    assert_eq!(scanner.tokens[2].token_type, TokenType::Float { value: "100".to_string(), num_type: NumberType::F32 });
+    assert_eq!(scanner.tokens[3].token_type, TokenType::Float { value: "100".to_string(), num_type: NumberType::F64 });
+    assert_eq!(scanner.tokens[4].token_type, TokenType::Float { value: "100.0".to_string(), num_type: NumberType::F32 });
+    assert_eq!(scanner.tokens[5].token_type, TokenType::Float { value: "100.0".to_string(), num_type: NumberType::F64 });
+    assert_eq!(scanner.tokens[6].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::I8 });
+    assert_eq!(scanner.tokens[7].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::I16 });
+    assert_eq!(scanner.tokens[8].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::I32 });
+    assert_eq!(scanner.tokens[9].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::I64 });
+    assert_eq!(scanner.tokens[10].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::I128 });
+    assert_eq!(scanner.tokens[11].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::ISize });
+    assert_eq!(scanner.tokens[12].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::U8 });
+    assert_eq!(scanner.tokens[13].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::U16 });
+    assert_eq!(scanner.tokens[14].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::U32 });
+    assert_eq!(scanner.tokens[15].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::U64 });
+    assert_eq!(scanner.tokens[16].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::U128 });
+    assert_eq!(scanner.tokens[17].token_type, TokenType::Int { value: "100".to_string(), num_type: NumberType::USize });
+
     assert_eq!(scanner.tokens[18].token_type, EOF);
 }
 
@@ -318,8 +308,7 @@ fn handle_hex_number_token() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::UndefinedIntValue(0xFF)));
-    assert_eq!(scanner.tokens[0].token_type, Number);
+    assert_eq!(scanner.tokens[0].token_type, Int { value: "255".to_string(), num_type: NumberType::UntypedInt });
     assert_eq!(scanner.tokens[1].token_type, EOF);
 }
 
@@ -331,8 +320,7 @@ fn handle_idetifier_token() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::IdentifierValue("hello".to_string())));
-    assert_eq!(scanner.tokens[0].token_type, Identifier);
+    assert_eq!(scanner.tokens[0].token_type, Identifier { value: "hello".to_string() });
     assert_eq!(scanner.tokens[1].token_type, EOF);
 }
 
@@ -344,8 +332,7 @@ fn handle_underscore_idetifier_token() {
     let _ = scanner.scan_tokens();
 
     assert_eq!(scanner.tokens.len(), 2);
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::IdentifierValue("_".to_string())));
-    assert_eq!(scanner.tokens[0].token_type, Identifier);
+    assert_eq!(scanner.tokens[0].token_type, Identifier { value: "_".to_string() });
     assert_eq!(scanner.tokens[1].token_type, EOF);
 }
 
@@ -361,8 +348,7 @@ fn handle_not_ascii_idetifier_token() {
     }
 
     assert_eq!(scanner.tokens.len(), 2);
-    assert_eq!(scanner.tokens[0].literal, Some(LiteralValue::IdentifierValue("привет".to_string())));
-    assert_eq!(scanner.tokens[0].token_type, Identifier);
+    assert_eq!(scanner.tokens[0].token_type, Identifier { value: "привет".to_string() });
     assert_eq!(scanner.tokens[1].token_type, EOF);
 }
 
@@ -373,7 +359,7 @@ fn handle_standart_idetifiers_token() {
     let mut scanner = Scanner::new(file_path, src.as_str());
     let _ = scanner.scan_tokens();
 
-    assert_eq!(scanner.tokens.len(), 20);
+    assert_eq!(scanner.tokens.len(), 21);
 
     assert_eq!(scanner.tokens[0].lexeme, "and".to_string());
     assert_eq!(scanner.tokens[1].lexeme, "or".to_string());
@@ -391,9 +377,10 @@ fn handle_standart_idetifiers_token() {
     assert_eq!(scanner.tokens[13].lexeme, "break".to_string());
     assert_eq!(scanner.tokens[14].lexeme, "continue".to_string());
     assert_eq!(scanner.tokens[15].lexeme, "let".to_string());
-    assert_eq!(scanner.tokens[16].lexeme, "null".to_string());
-    assert_eq!(scanner.tokens[17].lexeme, "true".to_string());
-    assert_eq!(scanner.tokens[18].lexeme, "false".to_string());
+    assert_eq!(scanner.tokens[16].lexeme, "mut".to_string());
+    assert_eq!(scanner.tokens[17].lexeme, "null".to_string());
+    assert_eq!(scanner.tokens[18].lexeme, "true".to_string());
+    assert_eq!(scanner.tokens[19].lexeme, "false".to_string());
     
     assert_eq!(scanner.tokens[0].token_type, And);
     assert_eq!(scanner.tokens[1].token_type, Or);
@@ -411,18 +398,12 @@ fn handle_standart_idetifiers_token() {
     assert_eq!(scanner.tokens[13].token_type, Break);
     assert_eq!(scanner.tokens[14].token_type, Continue);
     assert_eq!(scanner.tokens[15].token_type, Let);
-    assert_eq!(scanner.tokens[16].token_type, Null);
-    assert_eq!(scanner.tokens[17].token_type, BoolT);
-    assert_eq!(scanner.tokens[18].token_type, BoolT);
+    assert_eq!(scanner.tokens[16].token_type, Mut);
+    assert_eq!(scanner.tokens[17].token_type, Null);
+    assert_eq!(scanner.tokens[18].token_type, BoolT { value: true });
+    assert_eq!(scanner.tokens[19].token_type, BoolT { value: false });
 
-    for i in 0..16 {
-        assert_eq!(scanner.tokens[i].literal, None);
-    }
-    assert_eq!(scanner.tokens[16].literal, Some(LiteralValue::NullLiteral(false)));
-    assert_eq!(scanner.tokens[17].literal, Some(LiteralValue::Bool(true)));
-    assert_eq!(scanner.tokens[18].literal, Some(LiteralValue::Bool(false)));
-
-    assert_eq!(scanner.tokens[19].token_type, EOF);
+    assert_eq!(scanner.tokens[20].token_type, EOF);
 }
 
 // for token in scanner.tokens.iter() {
