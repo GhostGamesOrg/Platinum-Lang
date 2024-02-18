@@ -1,6 +1,6 @@
 use std::{self, fs};
 
-use interpriter::lexer::{lexer::*, token::{NumberType, TokenType::{self, *}}};
+use platinum_core::lexer::{lexer::*, token::{NumberType, TokenType::{self, *}}};
 
 
 fn read_file(path: &str) -> Result<String, Box<dyn std::error::Error>> {
@@ -45,11 +45,11 @@ fn handle_one_char_tokens() {
 #[test]
 fn handle_multi_char_tokens() {
     let file_path = "<stdin>";
-    let src = "-- ++ -= += /= *= == != >= <= >> >>= << <<= ?? && ||";
+    let src = "-- ++ -= += /= *= == != >= <= >> >>= << <<= && ||";
     let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
-    assert_eq!(scanner.tokens.len(), 18);
+    assert_eq!(scanner.tokens.len(), 17);
     assert_eq!(scanner.tokens[0].lexeme, "--".to_string());
     assert_eq!(scanner.tokens[1].lexeme, "++".to_string());
     assert_eq!(scanner.tokens[2].lexeme, "-=".to_string());
@@ -64,9 +64,8 @@ fn handle_multi_char_tokens() {
     assert_eq!(scanner.tokens[11].lexeme, ">>=".to_string());
     assert_eq!(scanner.tokens[12].lexeme, "<<".to_string());
     assert_eq!(scanner.tokens[13].lexeme, "<<=".to_string());
-    assert_eq!(scanner.tokens[14].lexeme, "??".to_string());
-    assert_eq!(scanner.tokens[15].lexeme, "&&".to_string());
-    assert_eq!(scanner.tokens[16].lexeme, "||".to_string());
+    assert_eq!(scanner.tokens[14].lexeme, "&&".to_string());
+    assert_eq!(scanner.tokens[15].lexeme, "||".to_string());
 
     assert_eq!(scanner.tokens[0].token_type, MinusMinus);
     assert_eq!(scanner.tokens[1].token_type, PlusPlus);
@@ -82,10 +81,9 @@ fn handle_multi_char_tokens() {
     assert_eq!(scanner.tokens[11].token_type, GreaterGreaterEqual);
     assert_eq!(scanner.tokens[12].token_type, LessLess);
     assert_eq!(scanner.tokens[13].token_type, LessLessEqual);
-    assert_eq!(scanner.tokens[14].token_type, QuestionQuestion);
-    assert_eq!(scanner.tokens[15].token_type, And);
-    assert_eq!(scanner.tokens[16].token_type, Or);
-    assert_eq!(scanner.tokens[17].token_type, EOF);
+    assert_eq!(scanner.tokens[14].token_type, And);
+    assert_eq!(scanner.tokens[15].token_type, Or);
+    assert_eq!(scanner.tokens[16].token_type, EOF);
 }
 
 #[test]
@@ -251,10 +249,6 @@ fn handle_numbers_tokens() {
     let src = read_file(file_path).unwrap();
     let mut scanner = Scanner::new(file_path, src.as_str());
     let _ = scanner.scan_tokens();
-
-    for token in scanner.tokens.iter() {
-        println!("{:?}", token);
-    }
     
     assert_eq!(scanner.tokens.len(), 19);
     assert_eq!(scanner.tokens[0].lexeme, "100".to_string());
@@ -340,10 +334,6 @@ fn handle_not_ascii_idetifier_token() {
     let src = "привет";
     let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
-
-    for token in scanner.tokens.iter() {
-        println!("{:?}", token);
-    }
 
     assert_eq!(scanner.tokens.len(), 2);
     assert_eq!(scanner.tokens[0].token_type, Identifier { value: "привет".to_string() });

@@ -7,7 +7,7 @@ pub enum Type {
     Integer,
     Float,
     Bool,
-
+    Null
 }
 
 impl Type {
@@ -18,6 +18,7 @@ impl Type {
             Type::Integer => "int".to_string(),
             Type::Float => "Float".to_string(),
             Type::Bool => "bool".to_string(),
+            Type::Null => "null".to_string()
         }
     }
 }
@@ -163,6 +164,18 @@ impl Expression {
                         }
                         return Err(format!("Can't use operator `{}` with `{}` type", operator.lexeme, left_result.to_string()))
                     }
+                    (_, Type::Null) |
+                    (Type::Null, _) => {
+                        if match_tokens(
+                            operator.clone(),
+                            vec![
+                                TokenType::EqualEqual, TokenType::BangEqual
+                                ]
+                            ) {
+                            return Ok(Type::Bool);
+                        }
+                        return Err(format!("Can't use operator `{}` with `{}` type", operator.lexeme, left_result.to_string()))
+                    }
                     _ => return Err("Unexpected binary operator".to_string())
                 }
             }
@@ -209,6 +222,7 @@ impl Expression {
                     TokenType::Int {..} => Ok(Type::Integer),
                     TokenType::Float {..} => Ok(Type::Float),
                     TokenType::BoolT {..} => Ok(Type::Bool),
+                    TokenType::Null => Ok(Type::Null),
                     _ => Err("Parser error".to_string())
                 }
             }
@@ -354,6 +368,7 @@ impl Expression {
                             (TokenType::Float { value: value_left, .. }, TokenType::Float { value: value_right, .. }) |
                             (TokenType::Int { value: value_left, .. }, TokenType::Float { value: value_right, .. }) |
                             (TokenType::Float { value: value_left, .. }, TokenType::Int { value: value_right, .. }) => parse_f64(&value_left) == parse_f64(&value_right),
+                            (TokenType::Null, TokenType::Null) => true,
                             _ => false
                         }
                     } else if match_token(operator.token_type.clone(), TokenType::BangEqual) {
@@ -365,6 +380,7 @@ impl Expression {
                             (TokenType::Float { value: value_left, .. }, TokenType::Float { value: value_right, .. }) |
                             (TokenType::Int { value: value_left, .. }, TokenType::Float { value: value_right, .. }) |
                             (TokenType::Float { value: value_left, .. }, TokenType::Int { value: value_right, .. }) => parse_f64(&value_left) != parse_f64(&value_right),
+                            (TokenType::Null, TokenType::Null) => false,
                             _ => true
                         }
                     } else {

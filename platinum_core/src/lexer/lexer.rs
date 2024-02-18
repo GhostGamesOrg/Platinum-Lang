@@ -23,8 +23,12 @@ fn is_hex(c: char) -> bool {
     c.is_digit(10) || ('A'..='F').contains(&c) || c == '_'
 }
 
-fn is_idetifier_char(c: char) -> bool {
+fn is_idetifier_char_start(c: char) -> bool {
     c.is_alphabetic() || c == '_'
+}
+
+fn is_idetifier_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
 }
 
 fn str_to_keyword(string: &str) -> Option<TokenType> {
@@ -284,11 +288,7 @@ impl<'s> Scanner<'s> {
             }
             '?' => {
                 let token = {
-                    if self.char_match('?') {
-                        QuestionQuestion
-                    } else {
-                        Question
-                    }
+                    Question
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
             }
@@ -332,7 +332,7 @@ impl<'s> Scanner<'s> {
                             Err(msg) => return Err(msg)
                         }
                     }
-                } else if is_idetifier_char(c) {
+                } else if is_idetifier_char_start(c) {
                     match self.identifier() {
                         Ok(_) => (),
                         Err(msg) => return Err(msg)

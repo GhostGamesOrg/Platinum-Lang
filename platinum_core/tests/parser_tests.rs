@@ -1,7 +1,7 @@
 use std::{self, fs};
 
-use interpriter::lexer::lexer::Scanner;
-use interpriter::parser::parser::Parser;
+use platinum_core::lexer::lexer::Scanner;
+use platinum_core::parser::parser::Parser;
 
 fn read_file(path: &str) -> Result<String, Box<dyn std::error::Error>> {
     let src: String = fs::read_to_string(path)?.parse()?;
@@ -43,8 +43,106 @@ fn parse_block_stmt() {
         },
         Err(msg) => panic!("{}", msg)
     }
-    println!("{:?}", statements[0]);
+
+    
     assert_eq!("(block \n(assigment 308)\n(assigment 113)\n(assigment 123)\n)", statements[0].to_string());
+}
+
+#[test]
+fn parse_let_stmt() {
+    let file_path = "<stdin>";
+    let src = "let mut SASA: u8 = 10;";
+
+    let mut scanner = Scanner::new(file_path, src);
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+
+    assert_eq!("(let mut Identifier { value: \"SASA\" } SASA: Identifier { value: \"u8\" } u8 = (assigment 10))", statements[0].to_string());
+}
+
+#[test]
+fn parse_let_stmt2() {
+    let file_path = "<stdin>";
+    let src = "let mut SASA: u8;";
+
+    let mut scanner = Scanner::new(file_path, src);
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+
+    assert_eq!("(let mut Identifier { value: \"SASA\" } SASA: Identifier { value: \"u8\" } u8 = (assigment null))", statements[0].to_string());
+}
+
+#[test]
+fn parse_loop_stmt() {
+    let file_path = "tests\\parser_codes\\parse_loop_stmt.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+    
+    assert_eq!("(loop (block \n(let Identifier { value: \"a\" } a: Identifier { value: \"u8\" } u8 = (assigment 123))\n))", statements[0].to_string());
+}
+
+#[test]
+fn parse_while_stmt() {
+    let file_path = "tests\\parser_codes\\parse_while_stmt.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+    
+    assert_eq!("(while (equalty < 21312312 2134) (block \n(let Identifier { value: \"a\" } a: Identifier { value: \"u8\" } u8 = (assigment null))\n))", statements[0].to_string());
+}
+
+#[test]
+fn parse_do_while_stmt() {
+    let file_path = "tests\\parser_codes\\parse_do_while_stmt.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+    
+    assert_eq!("(do (block \n(let Identifier { value: \"a\" } a: Identifier { value: \"u8\" } u8 = (assigment null))\n) while (equalty < 21312312 2134))", statements[0].to_string());
 }
 
 #[test]

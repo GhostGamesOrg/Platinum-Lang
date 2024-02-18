@@ -2,7 +2,8 @@
     "commentTranslate.targetLanguage": "ru",
     "CodeGPT.apiKey": "CodeGPT Plus Beta",
     "rust-analyzer.linkedProjects": [
-        ".\\interpriter\\Cargo.toml",
-        ".\\interpriter\\Cargo.toml"
-    ]
+        ".\\cii\\Cargo.toml",
+        ".\\platinum_core\\Cargo.toml"
+    ],
+    "rust-analyzer.checkOnSave": true
 }

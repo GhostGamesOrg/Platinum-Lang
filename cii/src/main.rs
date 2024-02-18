@@ -5,8 +5,8 @@ use std::{
     io::{self, BufRead, Write}
 };
 
-use interpriter::lexer::lexer::*;
-use interpriter::parser::parser::Parser;
+use platinum_core::lexer::lexer::*;
+use platinum_core::parser::parser::Parser;
 // use interpriter::interpreter::Interpreter;
 
 /// Runs file

@@ -49,6 +49,9 @@ impl Parser {
         if self.match_token(LeftCurBrace) {
             return self.block_statement();
         }
+        if self.match_token(Let) {
+            return self.let_statement();
+        }
         if self.match_token(Fun) {
             return self.func_statement(); // todo
         }
@@ -74,11 +77,49 @@ impl Parser {
 
     fn block_statement(&mut self) -> Result<Statement, String> {
         let mut statements = Vec::new();
-        let _ = self.consume(LeftCurBrace, "`}` expected");
-        while !self.match_token(RightCurBrace) {
+        while !self.match_tokens(vec![RightCurBrace, EOF]) {
             statements.push(self.statement()?);
         }
+        if self.previous().token_type == EOF {
+            return Err("Block statements wasn't closed".to_string());
+        }
         Ok(Statement::Block { statements: statements })
+    }
+    
+    fn let_statement(&mut self) -> Result<Statement, String> {
+
+        let mutable = self.match_token(Mut);
+
+        let name = self.consume(Identifier { value: String::new() }, "Identifier expected, for variable declaration.")?;
+        let _ = self.consume(Colon, "`:` expected")?;
+        let _type = self.consume(Identifier { value: String::new() }, "Type expected, for variable declaration.")?;
+
+        let mut defined = false;
+        let mut assigment_stmt = Statement::Assigment {
+            expression: Expression::Literal {
+                value: Token::new(
+                    Null,
+                    "null".to_string(),
+                    _type.possition
+                )
+            }
+        };
+        if self.match_token(Equal) {
+            defined = true;
+            assigment_stmt = self.statement()?;
+        }
+        
+        let _ = self.consume(Semicolon, "`;` expected after variable define statement")?;
+        
+        Ok(
+            Statement::Let {
+                mutable: mutable,
+                defined: defined,
+                _type: _type,
+                name: name,
+                value: Box::from(assigment_stmt)
+            }
+        )
     }
     
     fn func_statement(&mut self) -> Result<Statement, String> {
@@ -88,19 +129,39 @@ impl Parser {
     }
 
     fn for_statement(&mut self) -> Result<Statement, String> {
+        // let _ = self.consume(LeftParen, "`(` expected")?;
+        // let condition = self.assigment()?;
+        // let _ = self.consume(RightParen, "`)` expected")?;
+        // let initialization = self.assigment()?;
+        // let _ = self.consume(LeftCurBrace, "`{` expected")?;
+        // let block = Box::from(self.block_statement()?);
+        // Ok(Statement::While { condition: condition, block: block })
         todo!()
     }
 
     fn while_statement(&mut self) -> Result<Statement, String> {
-        todo!()
+        let _ = self.consume(LeftParen, "`(` expected")?;
+        let condition = self.assigment()?;
+        let _ = self.consume(RightParen, "`)` expected")?;
+        let _ = self.consume(LeftCurBrace, "`{` expected")?;
+        let block = Box::from(self.block_statement()?);
+        Ok(Statement::While { condition: condition, block: block })
     }
 
     fn do_while_statement(&mut self) -> Result<Statement, String> {
-        todo!()
+        let _ = self.consume(LeftCurBrace, "`{` expected")?;
+        let block = Box::from(self.block_statement()?);
+        let _ = self.consume(While, "`while` expected after block statement")?;
+        let _ = self.consume(LeftParen, "`(` expected")?;
+        let condition = self.assigment()?;
+        let _ = self.consume(RightParen, "`)` expected")?;
+        let _ = self.consume(Semicolon, "`;` expected after variable define statement")?;
+        Ok(Statement::DoWhile { block: block, condition: condition })
     }
 
     fn loop_statement(&mut self) -> Result<Statement, String> {
-        todo!()
+        let _ = self.consume(LeftCurBrace, "`{` expected")?;
+        Ok(Statement::Loop { block: Box::from(self.block_statement()?) })
     }
 
 
@@ -114,7 +175,7 @@ impl Parser {
     }
 
     fn ternary(&mut self) -> Result<Expression, String> {
-        let mut result: Expression = self.null_coalesce()?;
+        let mut result: Expression = self.logical_or()?;
         if self.match_token(Question) {
             let true_expression = self.expression()?;
 
@@ -125,20 +186,6 @@ impl Parser {
                 result: Box::from(result),
                 true_expression: Box::from(true_expression),
                 false_expression: Box::from(false_expression)
-            };
-        }
-        Ok(result)
-    }
-
-    fn null_coalesce(&mut self) -> Result<Expression, String> {
-        let mut result: Expression = self.logical_or()?;
-        while self.match_token(QuestionQuestion) {
-            let op = self.previous();
-            let right = self.logical_or()?;
-            result = Expression::EqualtyComparison {
-                left: Box::from(result),
-                operator: op,
-                right: Box::from(right)
             };
         }
         Ok(result)
@@ -309,7 +356,7 @@ impl Parser {
                     expression: Box::from(expr),
                 };
             }
-            Int {..} | Float {..} | StringT {..} | BoolT {..} | Char {..} => {
+            Int {..} | Float {..} | StringT {..} | BoolT {..} | Char {..} | Null => {
                 self.advance();
                 result = Expression::Literal {
                     value: token,
