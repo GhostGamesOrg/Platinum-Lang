@@ -7,11 +7,13 @@ use std::{
 
 use interpriter::lexer::lexer::*;
 use interpriter::parser::parser::Parser;
+// use interpriter::interpreter::Interpreter;
 
 /// Runs file
 /// Use `metal run <filename>` to run
 fn run_file(path: &str) -> Result<(), String> {
-
+    // let mut interpreter = Interpreter::new();
+    
     // Reads file first
     match fs::read_to_string(path) {
         Err(msg) => return Err(msg.to_string()),
@@ -22,6 +24,7 @@ fn run_file(path: &str) -> Result<(), String> {
 /// Runs script from console
 /// Use `metal` to run and then write your script
 fn run_prompt() -> Result<(), String> {
+    // let mut interpreter = Interpreter::new();
     loop {
         print!(":>> ");
 
@@ -58,9 +61,10 @@ fn run(file_path: &str, src: &str) -> Result<(), String> {
     }
 
     let mut parser = Parser::new(file_path, scanner.tokens.clone());
-    let expr = parser.parse()?;
+    let statements = parser.parse()?;
+    
+    println!("{}", statements[0].to_string());
 
-    println!("{}", expr.evaluate().to_string());
     return Ok(());
 
 }

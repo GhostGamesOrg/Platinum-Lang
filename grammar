@@ -1,0 +1,15 @@
+expression := binary
+
+binary := term
+
+term := factor (('+' | '-') factor)*
+
+factor := unary (('*' | '/') unary)*
+
+unary := primary |  '-' unary
+
+primary := literal | grouping
+
+literal := NUMBER
+
+grouping := '(' expression ')'

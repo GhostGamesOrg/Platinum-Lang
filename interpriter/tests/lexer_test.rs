@@ -45,11 +45,11 @@ fn handle_one_char_tokens() {
 #[test]
 fn handle_multi_char_tokens() {
     let file_path = "<stdin>";
-    let src = "-- ++ -= += /= *= == != >= <= >> >>= >>> << <<= ?? && ||";
+    let src = "-- ++ -= += /= *= == != >= <= >> >>= << <<= ?? && ||";
     let mut scanner = Scanner::new(file_path, src);
     let _ = scanner.scan_tokens();
 
-    assert_eq!(scanner.tokens.len(), 19);
+    assert_eq!(scanner.tokens.len(), 18);
     assert_eq!(scanner.tokens[0].lexeme, "--".to_string());
     assert_eq!(scanner.tokens[1].lexeme, "++".to_string());
     assert_eq!(scanner.tokens[2].lexeme, "-=".to_string());
@@ -62,12 +62,11 @@ fn handle_multi_char_tokens() {
     assert_eq!(scanner.tokens[9].lexeme, "<=".to_string());
     assert_eq!(scanner.tokens[10].lexeme, ">>".to_string());
     assert_eq!(scanner.tokens[11].lexeme, ">>=".to_string());
-    assert_eq!(scanner.tokens[12].lexeme, ">>>".to_string());
-    assert_eq!(scanner.tokens[13].lexeme, "<<".to_string());
-    assert_eq!(scanner.tokens[14].lexeme, "<<=".to_string());
-    assert_eq!(scanner.tokens[15].lexeme, "??".to_string());
-    assert_eq!(scanner.tokens[16].lexeme, "&&".to_string());
-    assert_eq!(scanner.tokens[17].lexeme, "||".to_string());
+    assert_eq!(scanner.tokens[12].lexeme, "<<".to_string());
+    assert_eq!(scanner.tokens[13].lexeme, "<<=".to_string());
+    assert_eq!(scanner.tokens[14].lexeme, "??".to_string());
+    assert_eq!(scanner.tokens[15].lexeme, "&&".to_string());
+    assert_eq!(scanner.tokens[16].lexeme, "||".to_string());
 
     assert_eq!(scanner.tokens[0].token_type, MinusMinus);
     assert_eq!(scanner.tokens[1].token_type, PlusPlus);
@@ -81,13 +80,12 @@ fn handle_multi_char_tokens() {
     assert_eq!(scanner.tokens[9].token_type, LessEqual);
     assert_eq!(scanner.tokens[10].token_type, GreaterGreater);
     assert_eq!(scanner.tokens[11].token_type, GreaterGreaterEqual);
-    assert_eq!(scanner.tokens[12].token_type, GreaterGreaterGreater);
-    assert_eq!(scanner.tokens[13].token_type, LessLess);
-    assert_eq!(scanner.tokens[14].token_type, LessLessEqual);
-    assert_eq!(scanner.tokens[15].token_type, QuestionQuestion);
-    assert_eq!(scanner.tokens[16].token_type, And);
-    assert_eq!(scanner.tokens[17].token_type, Or);
-    assert_eq!(scanner.tokens[18].token_type, EOF);
+    assert_eq!(scanner.tokens[12].token_type, LessLess);
+    assert_eq!(scanner.tokens[13].token_type, LessLessEqual);
+    assert_eq!(scanner.tokens[14].token_type, QuestionQuestion);
+    assert_eq!(scanner.tokens[15].token_type, And);
+    assert_eq!(scanner.tokens[16].token_type, Or);
+    assert_eq!(scanner.tokens[17].token_type, EOF);
 }
 
 #[test]

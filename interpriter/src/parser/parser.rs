@@ -74,7 +74,7 @@ impl Parser {
 
     fn block_statement(&mut self) -> Result<Statement, String> {
         let mut statements = Vec::new();
-        self.consume(LeftCurBrace, "`}` expected");
+        let _ = self.consume(LeftCurBrace, "`}` expected");
         while !self.match_token(RightCurBrace) {
             statements.push(self.statement()?);
         }
@@ -118,7 +118,7 @@ impl Parser {
         if self.match_token(Question) {
             let true_expression = self.expression()?;
 
-            self.consume(Colon, "`:` expected after left result");
+            let _ = self.consume(Colon, "`:` expected after left result");
             let false_expression = self.expression()?;
             
             result = Expression::Ternary {
@@ -135,7 +135,7 @@ impl Parser {
         while self.match_token(QuestionQuestion) {
             let op = self.previous();
             let right = self.logical_or()?;
-            result = Expression::Binary {
+            result = Expression::EqualtyComparison {
                 left: Box::from(result),
                 operator: op,
                 right: Box::from(right)
@@ -149,7 +149,7 @@ impl Parser {
         while self.match_token(Or) {
             let op = self.previous();
             let right = self.logical_and()?;
-            result = Expression::Binary {
+            result = Expression::EqualtyComparison {
                 left: Box::from(result),
                 operator: op,
                 right: Box::from(right)
@@ -163,7 +163,7 @@ impl Parser {
         while self.match_token(And) {
             let op = self.previous();
             let right = self.bitwise_or()?;
-            result = Expression::Binary {
+            result = Expression::EqualtyComparison {
                 left: Box::from(result),
                 operator: op,
                 right: Box::from(right)
@@ -219,7 +219,7 @@ impl Parser {
         while self.match_tokens(vec![EqualEqual, BangEqual]) {
             let op = self.previous();
             let right = self.comparison()?;
-            result = Expression::Binary {
+            result = Expression::EqualtyComparison {
                 left: Box::from(result),
                 operator: op,
                 right: Box::from(right)
@@ -233,7 +233,7 @@ impl Parser {
         while self.match_tokens(vec![LessEqual, Less, GreaterEqual, Greater]) {
             let op = self.previous();
             let right = self.shift()?;
-            result = Expression::Binary {
+            result = Expression::EqualtyComparison {
                 left: Box::from(result),
                 operator: op,
                 right: Box::from(right)
@@ -244,7 +244,7 @@ impl Parser {
 
     fn shift(&mut self) -> Result<Expression, String> {
         let mut result = self.term()?;
-        while self.match_tokens(vec![LessLess, GreaterGreater, GreaterGreaterGreater]) {
+        while self.match_tokens(vec![LessLess, GreaterGreater]) {
             let op = self.previous();
             let right = self.term()?;
             result = Expression::Binary {
@@ -272,7 +272,7 @@ impl Parser {
 
     fn factor(&mut self) -> Result<Expression, String> {
         let mut result = self.unary()?;
-        while self.match_tokens(vec![Star, Slash]) {
+        while self.match_tokens(vec![Star, Slash, Persent]) {
             let op = self.previous();
             let right = self.unary()?;
             result = Expression::Binary {

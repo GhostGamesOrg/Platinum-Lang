@@ -40,6 +40,7 @@ pub enum TokenType {
     Plus,           // +
     Slash,          // /
     Star,           // *
+    Persent,        // *
     Equal,          // =
     
     MinusMinus,     // --
@@ -49,6 +50,7 @@ pub enum TokenType {
     PlusEqual,      // +=
     SlashEqual,     // /=
     StarEqual,      // *=
+    PersentEqual,   // *=
 
     EqualEqual,     // ==
     Bang,           // !
@@ -60,7 +62,6 @@ pub enum TokenType {
 
     GreaterGreater,         // >>
     GreaterGreaterEqual,    // >>=
-    GreaterGreaterGreater,  // >>>
     LessLess,               // <<
     LessLessEqual,          // <<=
     Tilde,                  // ~

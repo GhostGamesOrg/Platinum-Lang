@@ -20,7 +20,7 @@ macro_rules! add_single_tokens {
 }
 
 fn is_hex(c: char) -> bool {
-    c.is_digit(16)
+    c.is_digit(10) || ('A'..='F').contains(&c) || c == '_'
 }
 
 fn is_idetifier_char(c: char) -> bool {
@@ -46,7 +46,8 @@ fn str_to_keyword(string: &str) -> Option<TokenType> {
         "continue" => Some(Continue),
         "let" => Some(Let),
         "mut" => Some(Mut),
-
+        "true" => Some(BoolT { value: true }),
+        "false" => Some(BoolT { value:false }),
 
         "DBG" => Some(DBG),
         _ => None
@@ -174,6 +175,16 @@ impl<'s> Scanner<'s> {
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
             }
+            '%' => {
+                let token = {
+                    if self.char_match('=') {
+                        PersentEqual
+                    } else {
+                        Persent
+                    }
+                };
+                self.add_token(token, (self.line, pos_start, self.get_pos()));
+            }
             '/' => {
                 let token = {
                     if self.char_match('/') {
@@ -226,8 +237,6 @@ impl<'s> Scanner<'s> {
                     } else if self.char_match('>') {
                         if self.char_match('=') {
                             GreaterGreaterEqual
-                        } else if self.char_match('>') {
-                            GreaterGreaterGreater
                         } else {
                             GreaterGreater
                         }
@@ -312,12 +321,10 @@ impl<'s> Scanner<'s> {
             }
             c => {
                 if c.is_digit(10) {
-                    if c == '0' {
-                        if self.char_match('X') || self.char_match('x') {
-                            match self.hex_number() {
-                                Ok(_) => (),
-                                Err(msg) => return Err(msg)
-                            }
+                    if c == '0' && self.char_match('x') {
+                        match self.hex_number() {
+                            Ok(_) => (),
+                            Err(msg) => return Err(msg)
                         }
                     } else {
                         match self.number() {
@@ -358,11 +365,7 @@ impl<'s> Scanner<'s> {
             }
         }
         
-        if buffer == "true".to_string() {
-            self.add_token(BoolT { value: true }, (self.line, pos_start, self.get_pos()));
-        } else if buffer == "false".to_string() {
-            self.add_token(BoolT { value: false }, (self.line, pos_start, self.get_pos()));
-        } else if buffer == "null".to_string() {
+        if buffer == "null".to_string() {
             self.add_token(Null, (self.line, pos_start, self.get_pos()));
         } else {
             match str_to_keyword(&buffer) {
@@ -621,7 +624,9 @@ impl<'s> Scanner<'s> {
 
         while is_hex(self.next) {
             self.advance();
-            buffer.push(self.current);
+            if self.current != '_' {
+                buffer.push(self.current);
+            }
         }
 
         let result = {
