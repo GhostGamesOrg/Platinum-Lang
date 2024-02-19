@@ -1,4 +1,4 @@
-use crate::lexer::token::{Token, TokenType, TokenType::*};
+use crate::{lexer::token::{Token, TokenType::{self, *}}, parser::stmt::Argument};
 
 use super::{expr::Expression, stmt::Statement};
 
@@ -53,19 +53,37 @@ impl Parser {
             return self.let_statement();
         }
         if self.match_token(Fun) {
-            return self.func_statement(); // todo
+            return self.func_statement();
         }
         if self.match_token(For) {
-            return self.for_statement(); // todo
+            return self.for_statement();
+        }
+        if self.match_token(Range) {
+            return self.range_statement();
+        }
+        if self.match_token(Break) {
+            return self.break_statement(); // todo
+        }
+        if self.match_token(Continue) {
+            return self.continue_statement(); // todo
+        }
+        if self.match_token(Return) {
+            return self.return_statement(); // todo
+        }
+        if self.match_token(If) {
+            return self.if_else_statement();
         }
         if self.match_token(While) {
-            return self.while_statement(); // todo
+            return self.while_statement();
         }
         if self.match_token(DoWhile) {
-            return self.do_while_statement(); // todo
+            return self.do_while_statement();
         }
         if self.match_token(Loop) {
-            return self.loop_statement(); // todo
+            return self.loop_statement();
+        }
+        if self.look_token(0, Identifier { value: String::new() }) && self.look_token(1, LeftParen) {
+            return self.func_use_statement(); // todo
         }
         self.assigment_statement()
     }
@@ -123,45 +141,127 @@ impl Parser {
     }
     
     fn func_statement(&mut self) -> Result<Statement, String> {
+        let name = self.consume(Identifier { value: String::new() }, "Identifier expected, for function declaration.")?;
+
+        let _ = self.consume(LeftParen, "`(` expected")?;
+        let mut arguments: Vec<Argument> = vec![];
+        let mut starts_optional_args = false;
+        while !self.match_token(RightParen) {
+            let arg_name = self.consume(Identifier { value: String::new() }, "Argument name expected")?;
+
+            let _ = self.consume(Colon, "`:` expected")?;
+
+            let arg_type = self.consume(Identifier { value: String::new() }, "Argument type expected")?;
+
+            if self.match_token(Equal) {
+                starts_optional_args = true;
+                let value = self.statement()?;
+                arguments.push(Argument::Optional { name: arg_name, _type: arg_type, value: value });
+            } else if !starts_optional_args {
+                arguments.push(Argument::NotOptional { name: arg_name, _type: arg_type });
+            } else {
+                return Err("Required argument cannot be after optional".to_string());
+            }
+            self.match_token(Comma);
+        }
+
+        let mut _type = Token::new(Null, "void".to_string(), self.previous().possition);
+        
+        if self.match_token(MinusGreater) {
+            _type = self.consume(Identifier { value: String::new() }, "Returned type expected after `->`")?;
+        }
+
+        let _ = self.consume(LeftCurBrace, "`{` expected")?;
+
+        let block = self.block_statement()?;
+
+        Ok(
+            Statement::Function { name, _type, arguments, block: Box::from(block) }
+        )
+    }
+    
+    fn range_statement(&mut self) -> Result<Statement, String> {
+        let _ = self.consume(LeftBrace, "`[` expected")?;
+        let one = self.statement()?;
+        let _ = self.consume(Semicolon, "`;` expected")?;
+        let two = self.statement()?;
+        let _ = self.consume(RightBrace, "`]` expected")?;
+        Ok(Statement::RangeIter { start_num: Box::from(one), end_num: Box::from(two) })
+    }
+
+    fn break_statement(&mut self) -> Result<Statement, String> {
         todo!()
-        // self.consume(Fun, "Key `fun` expected");
-        // let name = self.consume(Identifier { value: String::new() }, "Identifier expected, for function declaration.")?;
+    }
+    
+    fn continue_statement(&mut self) -> Result<Statement, String> {
+        todo!()
+    }
+    
+    fn return_statement(&mut self) -> Result<Statement, String> {
+        todo!()
+    }
+    
+    fn if_else_statement(&mut self) -> Result<Statement, String> {
+        let _ = self.consume(LeftParen, "`(` expected")?;
+        let condition = self.statement()?;
+        let _ = self.consume(RightParen, "`)` expected")?;
+        let if_block = self.statement()?;
+        let mut else_block = None;
+        if self.match_token(Else) {
+            else_block = Some(Box::from(self.statement()?));
+        }
+
+        Ok(Statement::IfElse { condition: Box::from(condition), if_block: Box::from(if_block), else_block: else_block })
     }
 
     fn for_statement(&mut self) -> Result<Statement, String> {
-        // let _ = self.consume(LeftParen, "`(` expected")?;
-        // let condition = self.assigment()?;
-        // let _ = self.consume(RightParen, "`)` expected")?;
-        // let initialization = self.assigment()?;
-        // let _ = self.consume(LeftCurBrace, "`{` expected")?;
-        // let block = Box::from(self.block_statement()?);
-        // Ok(Statement::While { condition: condition, block: block })
-        todo!()
+        let _ = self.consume(LeftParen, "`(` expected")?;
+
+        let var = self.consume(Identifier { value: String::new() }, "Variable name expected")?;
+        
+        let _ = self.consume(In, "Variable name expected")?;
+
+        let container = self.statement()?;
+        
+        let _ = self.consume(RightParen, "`)` expected")?;
+        let a = self.consume(LeftCurBrace, "`{` expected")?;
+        let block = self.block_statement()?;
+        Ok(
+            Statement::For {
+                var,
+                container: Box::from(container),
+                block: Box::from(block)
+            }
+        )
     }
 
     fn while_statement(&mut self) -> Result<Statement, String> {
         let _ = self.consume(LeftParen, "`(` expected")?;
-        let condition = self.assigment()?;
+        let condition = self.statement()?;
         let _ = self.consume(RightParen, "`)` expected")?;
         let _ = self.consume(LeftCurBrace, "`{` expected")?;
-        let block = Box::from(self.block_statement()?);
-        Ok(Statement::While { condition: condition, block: block })
+        let block = self.block_statement()?;
+        Ok(Statement::While { condition: Box::from(condition), block: Box::from(block) })
     }
 
     fn do_while_statement(&mut self) -> Result<Statement, String> {
         let _ = self.consume(LeftCurBrace, "`{` expected")?;
-        let block = Box::from(self.block_statement()?);
+        let block = self.block_statement()?;
         let _ = self.consume(While, "`while` expected after block statement")?;
         let _ = self.consume(LeftParen, "`(` expected")?;
-        let condition = self.assigment()?;
+        let condition = self.statement()?;
         let _ = self.consume(RightParen, "`)` expected")?;
         let _ = self.consume(Semicolon, "`;` expected after variable define statement")?;
-        Ok(Statement::DoWhile { block: block, condition: condition })
+        Ok(Statement::DoWhile { block: Box::from(block), condition: Box::from(condition) })
     }
 
     fn loop_statement(&mut self) -> Result<Statement, String> {
         let _ = self.consume(LeftCurBrace, "`{` expected")?;
         Ok(Statement::Loop { block: Box::from(self.block_statement()?) })
+    }
+
+    fn func_use_statement(&mut self) -> Result<Statement, String> {
+        todo!()
     }
 
 
@@ -362,6 +462,12 @@ impl Parser {
                     value: token,
                 }
             }
+            Identifier { .. } => {
+                self.advance();
+                result = Expression::Variable {
+                    name: token,
+                }
+            }
             _ => return Err(format!("Expected expression: {:?}", token)),
         }
 
@@ -376,6 +482,19 @@ impl Parser {
             Ok(token)
         } else {
             return Err(msg.to_string());
+        }
+    }
+
+    fn look_token(&mut self, pos: usize, token_type: TokenType) -> bool {
+        if self.is_at_end() {
+            false
+        } else {
+            if self.tokens[self.current + pos].token_type.eq_token(token_type) {
+                self.advance();
+                true
+            } else {
+                false
+            }
         }
     }
 

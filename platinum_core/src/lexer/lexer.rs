@@ -43,6 +43,8 @@ fn str_to_keyword(string: &str) -> Option<TokenType> {
         "fun" => Some(Fun),
         "return" => Some(Return),
         "for" => Some(For),
+        "in" => Some(In),
+        "range" => Some(Range),
         "while" => Some(While),
         "do" => Some(DoWhile),
         "loop" => Some(Loop),
@@ -140,7 +142,6 @@ impl<'s> Scanner<'s> {
             '{' => LeftCurBrace,
             '}' => RightCurBrace,
             ',' => Comma,
-            '.' => Dot,
             ';' => Semicolon,
             ':' => Colon,
             '~' => Tilde
@@ -185,6 +186,16 @@ impl<'s> Scanner<'s> {
                         PersentEqual
                     } else {
                         Persent
+                    }
+                };
+                self.add_token(token, (self.line, pos_start, self.get_pos()));
+            }
+            '.' => {
+                let token = {
+                    if self.char_match('.') {
+                        DotDot
+                    } else {
+                        Dot
                     }
                 };
                 self.add_token(token, (self.line, pos_start, self.get_pos()));
@@ -406,13 +417,18 @@ impl<'s> Scanner<'s> {
                     } else if self.char_match('"') {
                         buffer.push('\"')
                     } else if self.char_match('u') {
-                        // let mut u_buffer = String::new();
-                        // let u_c = self.advance();
-                        // while u_c.is_digit(16) {
-                        //     
-                        // }
-                        // buffer.push('\u');
-                        todo!("Unicode");
+                        let mut u_buffer = String::new();
+                        while self.next.is_digit(16) {
+                            u_buffer.push(self.next);
+                            self.advance();
+                        }
+                        buffer.push(match char::from_u32(match u32::from_str_radix(&u_buffer, 16) {
+                            Ok(value) => value,
+                            Err(_) => return Err("Too big hex number".to_string())
+                        }) {
+                            Some(c) => c,
+                            None => return Err("Can't convert unicode to char".to_string())
+                        });
                     } else {
                         self.advance();
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));
@@ -461,13 +477,18 @@ impl<'s> Scanner<'s> {
                     } else if self.char_match('"') {
                         result = '\"';
                     } else if self.char_match('u') {
-                        // let mut u_buffer = String::new();
-                        // let u_c = self.advance();
-                        // while u_c.is_digit(16) {
-                        //     
-                        // }
-                        // buffer.push('\u');
-                        todo!("Unicode");
+                        let mut u_buffer = String::new();
+                        while self.next.is_digit(16) {
+                            u_buffer.push(self.next);
+                            self.advance();
+                        }
+                        result = match char::from_u32(match u32::from_str_radix(&u_buffer, 16) {
+                            Ok(value) => value,
+                            Err(_) => return Err("Too big hex number".to_string())
+                        }) {
+                            Some(c) => c,
+                            None => return Err("Can't convert unicode to char".to_string())
+                        };
                     } else {
                         self.advance();
                         let lexeme = self.get_lexeme((self.line, pos_start, self.current_pos));

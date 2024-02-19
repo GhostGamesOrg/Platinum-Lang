@@ -3,13 +3,23 @@ use crate::lexer::token::Token;
 use super::expr::Expression;
 
 #[derive(Debug, PartialEq)]
+pub enum Argument {
+    NotOptional { name: Token, _type: Token },
+    Optional { name: Token, _type: Token, value: Statement},
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Statement {
     Block { statements: Vec<Statement> },
     Assigment { expression: Expression },
     Let { mutable: bool, defined: bool, _type: Token, name: Token, value: Box<Statement>},
+    Function { name: Token, _type: Token, arguments: Vec<Argument>, block: Box<Statement>},
+    IfElse { condition: Box<Statement>, if_block: Box<Statement>, else_block: Option<Box<Statement>> },
+    RangeIter { start_num: Box<Statement>, end_num: Box<Statement> },
     Loop { block: Box<Statement> },
-    While { condition: Expression, block: Box<Statement> },
-    DoWhile { block: Box<Statement>, condition: Expression },
+    For { var: Token, container: Box<Statement>, block: Box<Statement> },
+    While { condition: Box<Statement>, block: Box<Statement> },
+    DoWhile { block: Box<Statement>, condition: Box<Statement> },
 }
 
 impl Statement {
@@ -39,9 +49,52 @@ impl Statement {
                     expression.to_string()
                 )
             }
+            Statement::Function { name, _type, arguments, block } => {
+                format!(
+                    "(fun {}({:?}) -> {} {})",
+                    name.to_string(),
+                    arguments,
+                    _type.to_string(),
+                    block.to_string()
+                )
+            }
+            Statement::IfElse { condition, if_block, else_block } => {
+                match else_block {
+                    Some(block) => {
+                        format!(
+                            "(if ({}) {} else {})",
+                            condition.to_string(),
+                            if_block.to_string(),
+                            block.to_string()
+                        )
+                    }
+                    None => {
+                        format!(
+                            "(if ({}) {})",
+                            condition.to_string(),
+                            if_block.to_string()
+                        )
+                    }
+                }
+            }
             Statement::Loop { block } => {
                 format!(
                     "(loop {})",
+                    block.to_string()
+                )
+            }
+            Statement::RangeIter { start_num, end_num } => {
+                format!(
+                    "(range {}..{})",
+                    start_num.to_string(),
+                    end_num.to_string()
+                )
+            }
+            Statement::For { var, container, block } => {
+                format!(
+                    "(for ({} in {}) {})",
+                    var.to_string(),
+                    container.to_string(),
                     block.to_string()
                 )
             }

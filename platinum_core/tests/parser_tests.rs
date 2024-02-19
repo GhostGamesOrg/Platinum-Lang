@@ -89,6 +89,63 @@ fn parse_let_stmt2() {
 }
 
 #[test]
+fn parse_if_stmt() {
+    let file_path = "tests\\parser_codes\\parse_if_stmt.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+
+    assert_eq!("(if ((assigment true)) (block \n(assigment true)\n))", statements[0].to_string());
+}
+
+#[test]
+fn parse_if_else_stmt() {
+    let file_path = "tests\\parser_codes\\parse_if_else_stmt.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+
+    assert_eq!("(if ((assigment true)) (block \n(assigment true)\n) else (block \n(assigment \"hello\")\n))", statements[0].to_string());
+}
+
+#[test]
+fn parse_if_else_stmt2() {
+    let file_path = "tests\\parser_codes\\parse_if_else_stmt2.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+
+    assert_eq!("(if ((assigment true)) (block \n(assigment true)\n) else (if ((assigment false)) (block \n(assigment 123)\n) else (block \n(assigment \"hello\")\n)))", statements[0].to_string());
+}
+
+#[test]
 fn parse_loop_stmt() {
     let file_path = "tests\\parser_codes\\parse_loop_stmt.ppl";
     let src = read_file(file_path).unwrap();
@@ -108,6 +165,25 @@ fn parse_loop_stmt() {
 }
 
 #[test]
+fn parse_for_stmt() {
+    let file_path = "tests\\parser_codes\\parse_for_stmt.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+    
+    assert_eq!("(for (Identifier { value: \"i\" } i in (range (assigment 0)..(assigment 11))) (block \n(assigment 2)\n))", statements[0].to_string());
+}
+
+#[test]
 fn parse_while_stmt() {
     let file_path = "tests\\parser_codes\\parse_while_stmt.ppl";
     let src = read_file(file_path).unwrap();
@@ -123,7 +199,7 @@ fn parse_while_stmt() {
         Err(msg) => panic!("{}", msg)
     }
     
-    assert_eq!("(while (equalty < 21312312 2134) (block \n(let Identifier { value: \"a\" } a: Identifier { value: \"u8\" } u8 = (assigment null))\n))", statements[0].to_string());
+    assert_eq!("(while (assigment false) (block \n(let Identifier { value: \"a\" } a: Identifier { value: \"u8\" } u8 = (assigment null))\n))", statements[0].to_string());
 }
 
 #[test]
@@ -142,7 +218,7 @@ fn parse_do_while_stmt() {
         Err(msg) => panic!("{}", msg)
     }
     
-    assert_eq!("(do (block \n(let Identifier { value: \"a\" } a: Identifier { value: \"u8\" } u8 = (assigment null))\n) while (equalty < 21312312 2134))", statements[0].to_string());
+    assert_eq!("(do (block \n(let Identifier { value: \"a\" } a: Identifier { value: \"u8\" } u8 = (assigment null))\n) while (assigment false))", statements[0].to_string());
 }
 
 #[test]

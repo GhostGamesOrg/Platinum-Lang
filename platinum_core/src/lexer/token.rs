@@ -33,6 +33,7 @@ pub enum TokenType {
     RightCurBrace,  // }
     Comma,          // ,
     Dot,            // .
+    DotDot,         // ..
     Semicolon,      // ;
     Colon,          // :
     
@@ -102,6 +103,8 @@ pub enum TokenType {
     Return,
     
     For,
+    In,
+    Range,
     While,
     DoWhile,
     Loop,

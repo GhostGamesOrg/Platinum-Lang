@@ -60,6 +60,10 @@ fn run(file_path: &str, src: &str) -> Result<(), String> {
         _ => ()
     }
 
+    for token in scanner.tokens.iter() {
+        println!("{:?}", token);
+    }
+    
     let mut parser = Parser::new(file_path, scanner.tokens.clone());
     let statements = parser.parse()?;
     

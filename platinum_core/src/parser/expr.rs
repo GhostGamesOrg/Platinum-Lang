@@ -30,6 +30,7 @@ pub enum Expression {
     Ternary { result: Box<Expression>, true_expression: Box<Expression>, false_expression: Box<Expression> },
     Unary { operator: Token, right: Box<Expression> },
     Grouping { expression: Box<Expression> },
+    Variable { name: Token },
     Literal { value: Token }
 }
 
@@ -62,6 +63,9 @@ impl Expression {
             }
             Expression::Grouping { expression } => {
                 format!("(group {})", (*expression).to_string())
+            }
+            Expression::Variable { name } => {
+                format!("{}", name.lexeme.clone())
             }
             Expression::Literal { value } => {
                 format!("{}", value.lexeme.clone())
@@ -215,6 +219,7 @@ impl Expression {
                 }
             }
             Expression::Grouping { expression } => (*expression).check_and_get_type(),
+            Expression::Variable { .. } => todo!(),
             Expression::Literal { value } => {
                 match value.token_type {
                     TokenType::StringT {..} => Ok(Type::String),
@@ -547,6 +552,7 @@ impl Expression {
             Expression::Grouping { expression } => {
                 return (*expression).clone().optimize_expression();
             }
+            Expression::Variable { .. } => return Ok(self.clone()),
             Expression::Literal { .. } => return Ok(self.clone()),
         }
         todo!()
