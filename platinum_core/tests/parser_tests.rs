@@ -146,6 +146,44 @@ fn parse_if_else_stmt2() {
 }
 
 #[test]
+fn parse_func_define_stmt() {
+    let file_path = "tests\\parser_codes\\parse_func_define_stmt.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+
+    assert_eq!("(fun Identifier { value: \"hello\" } hello([NotOptional { name: Token { token_type: Identifier { value: \"a\" }, lexeme: \"a\", possition: (1, 10, 11) }, _type: Token { token_type: Identifier { value: \"u8\" }, lexeme: \"u8\", possition: (1, 13, 15) } }, Optional { name: Token { token_type: Identifier { value: \"b\" }, lexeme: \"b\", possition: (1, 17, 18) }, _type: Token { token_type: Identifier { value: \"i128\" }, lexeme: \"i128\", possition: (1, 20, 24) }, value: Literal { value: Token { token_type: Int { value: \"2583\", num_type: UntypedInt }, lexeme: \"2583\", possition: (1, 31, 32) } } }]) -> Null void (block \n(assigment 2)\n))", statements[0].to_string());
+}
+
+#[test]
+fn parse_func_use_stmt() {
+    let file_path = "tests\\parser_codes\\parse_func_use_stmt.ppl";
+    let src = read_file(file_path).unwrap();
+    let mut scanner = Scanner::new(file_path, src.as_str());
+    let _ = scanner.scan_tokens();
+
+    let mut parser = Parser::new(file_path, scanner.tokens);
+    let statements; 
+    match parser.parse() {
+        Ok(stmts) => {
+            statements = stmts;
+        },
+        Err(msg) => panic!("{}", msg)
+    }
+
+    assert_eq!("(functionUse Identifier { value: \"print\" } print([Expr { value: Literal { value: Token { token_type: StringT { value: \"Hello\" }, lexeme: \"\\\"Hello\\\"\", possition: (1, 6, 13) } } }, Optional { name: Token { token_type: Identifier { value: \"a\" }, lexeme: \"a\", possition: (1, 15, 16) }, value: Literal { value: Token { token_type: BoolT { value: true }, lexeme: \"true\", possition: (1, 19, 23) } } }])", statements[0].to_string());
+}
+
+#[test]
 fn parse_loop_stmt() {
     let file_path = "tests\\parser_codes\\parse_loop_stmt.ppl";
     let src = read_file(file_path).unwrap();

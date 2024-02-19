@@ -5,7 +5,13 @@ use super::expr::Expression;
 #[derive(Debug, PartialEq)]
 pub enum Argument {
     NotOptional { name: Token, _type: Token },
-    Optional { name: Token, _type: Token, value: Statement},
+    Optional { name: Token, _type: Token, value: Expression},
+}
+
+#[derive(Debug, PartialEq)]
+pub enum UseArgument {
+    Expr { value: Expression},
+    Optional { name: Token, value: Expression},
 }
 
 #[derive(Debug, PartialEq)]
@@ -14,12 +20,16 @@ pub enum Statement {
     Assigment { expression: Expression },
     Let { mutable: bool, defined: bool, _type: Token, name: Token, value: Box<Statement>},
     Function { name: Token, _type: Token, arguments: Vec<Argument>, block: Box<Statement>},
+    FunctionUse { name: Token, arguments: Vec<UseArgument>},
     IfElse { condition: Box<Statement>, if_block: Box<Statement>, else_block: Option<Box<Statement>> },
-    RangeIter { start_num: Box<Statement>, end_num: Box<Statement> },
     Loop { block: Box<Statement> },
     For { var: Token, container: Box<Statement>, block: Box<Statement> },
+    RangeIter { start_num: Box<Statement>, end_num: Box<Statement> },
     While { condition: Box<Statement>, block: Box<Statement> },
     DoWhile { block: Box<Statement>, condition: Box<Statement> },
+    Break,
+    Continue,
+    Return { returned: Box<Statement> }
 }
 
 impl Statement {
@@ -56,6 +66,13 @@ impl Statement {
                     arguments,
                     _type.to_string(),
                     block.to_string()
+                )
+            }
+            Statement::FunctionUse { name, arguments } => {
+                format!(
+                    "(functionUse {}({:?})",
+                    name.to_string(),
+                    arguments,
                 )
             }
             Statement::IfElse { condition, if_block, else_block } => {
@@ -110,6 +127,14 @@ impl Statement {
                     "(do {} while {})",
                     block.to_string(),
                     condition.to_string()
+                )
+            }
+            Statement::Break => "(break)".to_string(),
+            Statement::Continue => "(continue)".to_string(),
+            Statement::Return { returned } => {
+                format!(
+                    "(return {})",
+                    returned.to_string()
                 )
             }
         }

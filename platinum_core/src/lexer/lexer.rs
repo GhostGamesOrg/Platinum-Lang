@@ -217,6 +217,14 @@ impl<'s> Scanner<'s> {
                             self.advance();
                         }
                         comment
+                    } else if self.char_match('*') {
+                        loop {
+                            if self.current == '*' || self.next == '/' {
+                                break;
+                            }
+                            self.advance();
+                        }
+                        Coment
                     } else if self.char_match('=') {
                         SlashEqual
                     } else {

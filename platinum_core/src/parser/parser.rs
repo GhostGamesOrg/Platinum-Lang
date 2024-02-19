@@ -1,4 +1,4 @@
-use crate::{lexer::token::{Token, TokenType::{self, *}}, parser::stmt::Argument};
+use crate::{lexer::token::{Token, TokenType::{self, *}}, parser::stmt::{Argument, UseArgument}};
 
 use super::{expr::Expression, stmt::Statement};
 
@@ -62,13 +62,13 @@ impl Parser {
             return self.range_statement();
         }
         if self.match_token(Break) {
-            return self.break_statement(); // todo
+            return self.break_statement();
         }
         if self.match_token(Continue) {
-            return self.continue_statement(); // todo
+            return self.continue_statement();
         }
         if self.match_token(Return) {
-            return self.return_statement(); // todo
+            return self.return_statement();
         }
         if self.match_token(If) {
             return self.if_else_statement();
@@ -82,6 +82,7 @@ impl Parser {
         if self.match_token(Loop) {
             return self.loop_statement();
         }
+        println!("{:?}", self.peek());
         if self.look_token(0, Identifier { value: String::new() }) && self.look_token(1, LeftParen) {
             return self.func_use_statement(); // todo
         }
@@ -155,7 +156,7 @@ impl Parser {
 
             if self.match_token(Equal) {
                 starts_optional_args = true;
-                let value = self.statement()?;
+                let value = self.expression()?;
                 arguments.push(Argument::Optional { name: arg_name, _type: arg_type, value: value });
             } else if !starts_optional_args {
                 arguments.push(Argument::NotOptional { name: arg_name, _type: arg_type });
@@ -190,15 +191,19 @@ impl Parser {
     }
 
     fn break_statement(&mut self) -> Result<Statement, String> {
-        todo!()
+        let _ = self.consume(Semicolon, "`;` expected")?;
+        Ok(Statement::Break)
     }
     
     fn continue_statement(&mut self) -> Result<Statement, String> {
-        todo!()
+        let _ = self.consume(Semicolon, "`;` expected")?;
+        Ok(Statement::Continue)
     }
     
     fn return_statement(&mut self) -> Result<Statement, String> {
-        todo!()
+        let returned = self.statement()?;
+        let _ = self.consume(Semicolon, "`;` expected")?;
+        Ok(Statement::Return { returned: Box::from(returned) })
     }
     
     fn if_else_statement(&mut self) -> Result<Statement, String> {
@@ -261,7 +266,25 @@ impl Parser {
     }
 
     fn func_use_statement(&mut self) -> Result<Statement, String> {
-        todo!()
+        let name = self.consume(Identifier { value: String::new() }, "Function name expected")?;
+        let _ = self.consume(LeftParen, "`(` expected")?;
+        let mut arguments: Vec<UseArgument> = vec![];
+        let mut starts_optional_args = false;
+        while !self.match_token(RightParen) {
+            if self.look_token(0, Identifier { value: String::new() }) && self.look_token(1, Equal) {
+                starts_optional_args = true;
+                let arg_name = self.consume(Identifier { value: String::new() }, "Argument name expected")?;
+                let _ = self.consume(Equal, "`=` expected")?;
+                let value: Expression = self.expression()?;
+                arguments.push(UseArgument::Optional { name: arg_name, value: value });
+            } else if !starts_optional_args {
+                arguments.push(UseArgument::Expr { value: self.expression()? });
+            } else {
+                return Err("Required argument cannot be after optional".to_string());
+            }
+            self.match_token(Comma);
+        }
+        Ok(Statement::FunctionUse { name, arguments })
     }
 
 
@@ -490,7 +513,6 @@ impl Parser {
             false
         } else {
             if self.tokens[self.current + pos].token_type.eq_token(token_type) {
-                self.advance();
                 true
             } else {
                 false
